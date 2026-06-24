@@ -573,7 +573,14 @@ $$Seed = \text{SystemUUID} \parallel \text{MachineID} \parallel \text{PlatformSa
 
 $$K_{\text{master}} = \text{HKDF-Extract}(\text{Salt}=\text{None}, \text{IKM}=Seed)$$
 
-$$K_{\text{crypt}} = \text{HKDF-Expand}(K_{\text{master}}, \text{Info}=b\text{"alchemist\_storage\_key"}, \text{L}=32)$$
+$$
+K_{\mathrm{crypt}} =
+\mathrm{HKDF\!-\!Expand}\!\left(
+K_{\mathrm{master}},\;
+\mathrm{info} = \texttt{"alchemist\\_storage\\_key"},\;
+L = 32
+\right)
+$$
 
 #### 2. Payload Encryption
 
