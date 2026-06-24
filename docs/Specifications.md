@@ -1,3 +1,5 @@
+Here is the cleaned and properly formatted version of your markdown document, with the excess spacing and broken line breaks resolved:
+
 # High-Level Architecture Specification: Alchemist.nvim (Automated Hybrid Daemon)
 
 This specification outlines the architecture for a zero-config, native NeoVim AI assistant plugin. It wraps the `aider` agent core and `litellm` SDK into a single headless Python background daemon, managed invisibly via `uv`. The system maximizes free-tier LLM API usage through smart key rotation, adaptive token/quota management, and task-specific routing while coordinating seamlessly across multiple concurrent editor instances.
@@ -8,7 +10,7 @@ This specification outlines the architecture for a zero-config, native NeoVim AI
 
 The application uses a **Single System-Wide Master Daemon / Multi-Client Architecture** to prevent resource contention. Multiple lightweight **UI/Client Layers** (NeoVim/Lua instances) communicate with a single stateful **Orchestration/Proxy Layer** (Python Daemon) via local Inter-Process Communication (IPC).
 
-```
+```text
 ┌────────────────────────┐               ┌────────────────────────┐
 │   NeoVim Instance #1   │               │   NeoVim Instance #2   │
 │  (Lua UI / Client)     │               │  (Lua UI / Client)     │
@@ -30,7 +32,7 @@ The application uses a **Single System-Wide Master Daemon / Multi-Client Archite
 
 ```
 
-* **Transport Mechanism:** Local IPC streams (Unix Domain Sockets on macOS/Linux; Named Pipes on Windows) managed asynchronously via NeoVim's `vim.loop` (libuv).
+* **Transport Mechanism:** Local IPC streams (Unix Domain Sockets on macOS/Linux; Named Pipes on Windows) are managed asynchronously via NeoVim's `vim.loop` (libuv).
 
 
 * **Socket Paths:**
@@ -41,7 +43,7 @@ The application uses a **Single System-Wide Master Daemon / Multi-Client Archite
 
 
 
-* **Protocol:** Structured JSON-RPC 2.0. Raw terminal parsing or ANSI character scraping is strictly prohibited.
+* **Protocol:** The system uses Structured JSON-RPC 2.0. Raw terminal parsing or ANSI character scraping is strictly prohibited.
 
 
 * **Lifecycle & Master Election:** The NeoVim client handles daemon spawning via a race-preventative bootstrap protocol:
@@ -84,7 +86,7 @@ A thin, unblocked UI wrapper that drives the user interaction layer.
 * **State Store:** Maintains an in-memory Lua table tracking current active session status, daemon connectivity, pending operations, and contextual error states.
 
 
-* **UI Managers:** Floating text buffers driven by `nui.nvim` or native floating viewports that handle chat prompts, system metrics, and interactive diff confirmation modules.
+* **UI Managers:** Uses floating text buffers driven by `nui.nvim` or native floating viewports to handle chat prompts, system metrics, and interactive diff confirmation modules.
 
 
 
@@ -94,7 +96,7 @@ A thin, unblocked UI wrapper that drives the user interaction layer.
 
 To eliminate installation friction, dependency management and runtime bootstrapping are completely hidden behind an automated, lazy-loaded hook.
 
-```
+```text
 [User Installs Plugin] ──> [Lazy.nvim Build Step] ──> [Check for 'uv' Binary]
                                                                │
                                                                ├──> If Missing: Pull Standalone 'uv'
@@ -112,17 +114,9 @@ To eliminate installation friction, dependency management and runtime bootstrapp
 | **2. Engine Check** | Lua Host | Scans the system path for `uv`. If absent, downloads the native platform-specific single binary directly from GitHub releases to `stdpath("data")`.
 
  |
-| **3. Dependencies** | Python Metadata | Employs inline PEP 723 declarations:
+| **3. Dependencies** | Python Metadata | Employs inline PEP 723 declarations: `# /// script`, `# dependencies = ["aider-chat>=0.70.0", "litellm>=1.0.0", "pydantic>=2.0.0", "aiosqlite>=0.20.0"]`, `# ///`.
 
-<br>
-
-<br>
-
-<br>`# /// script`<br>
-
-<br>`# dependencies = ["aider-chat>=0.70.0", "litellm>=1.0.0", "pydantic>=2.0.0", "aiosqlite>=0.20.0"]`<br>
-
-<br>`# ///` |
+ |
 | **4. Process Execution** | Lua Process Host | Boots the master daemon (if elected) via `uv run --quiet free_aider_daemon.py --master`. `uv` isolates and caches the script requirements silently on initial boot.
 
  |
@@ -240,7 +234,7 @@ When a key encounters an HTTP `429` error via a `litellm` event hook, the master
 
 To resolve conflicts between NeoVim's in-memory buffer states and Aider's file-system-driven modification patterns, the system enforces a strict isolation protocol using independent shadow environments *partitioned by project*.
 
-```
+```text
 [NeoVim Buffer State] ───(JSON-RPC: Pre-Flight Sync)───> [Project Shadow Workspace]
                                                                   │
                                                            [Execute Aider]
@@ -281,8 +275,6 @@ To resolve conflicts between NeoVim's in-memory buffer states and Aider's file-s
 * **On Rejection (`<Leader>cr`):** The client closes the diff viewport, and the daemon runs a `git reset --hard HEAD~1` within the shadow sandbox to sync internal state back to alignment with the active editor state.
 
 
-
-
 * **Out-of-Sync Buffers (Optimistic Locking):** To prevent race conditions if a user modifies text during generation, the client transmits a content hash during pre-flight sync. Upon receiving the diff payload, the client re-verifies the buffer hash. If the hashes do not match, the application triggers a three-way merge via `vim.diff()` or alerts the user before applying modifications.
 
 
@@ -294,10 +286,7 @@ To resolve conflicts between NeoVim's in-memory buffer states and Aider's file-s
 * **Setup Panel (Configless Integration):** Typing `:FreeAiderSetup` spawns a tabbed configuration dashboard utilizing floating buffers. Users input keys into text widgets, which are instantly transmitted down the IPC pipe to update the master daemon's secure configuration layer.
 
 
-* **Statusline Component:** The plugin exposes a Lua function `FreeAiderStatus()` returning a string formatted for popular statusline systems (e.g., `lualine.nvim`). It shows an active global ticker:
-
-
-> `🤖 FreeAider [DeepSeek-V3 | Key #3]`
+* **Statusline Component:** The plugin exposes a Lua function `FreeAiderStatus()` returning a string formatted for popular statusline systems (e.g., `lualine.nvim`). It shows an active global ticker: `🤖 FreeAider [DeepSeek-V3 | Key #3]`.
 
 
 * **Diff Approval Panel:** Visualized utilizing split viewports or overlay layers within scratch buffers. It maps simple single-keystroke shortcuts to apply changes (`<Leader>ca`) or reject modifications (`<Leader>cr`).
@@ -489,20 +478,12 @@ Upon receiving a `server/request_confirmation` packet down the JSON-RPC pipe, th
 | --- | --- | --- |
 | **`boolean`** | Floating split panel showing a minimized confirmation dialog with explicit `[y]`es and `[n]`o visual triggers.
 
- | `y` or `<CR>` resolves to true;<br>
-
-<br>
-
-<br>`n` or `<Esc>` resolves to false.
+ | `y` or `<CR>` resolves to true; `n` or `<Esc>` resolves to false.
 
  |
 | **`text`** | Centered floating popup window (`nui.Input`) locking keystroke focus onto an explicit text entry buffer.
 
- | `<CR>` dispatches the raw text field string;<br>
-
-<br>
-
-<br>`<Esc>` aborts.
+ | `<CR>` dispatches the raw text field string; `<Esc>` aborts.
 
  |
 | **`selection`** | Interactive choice list viewport (`nui.Menu`), allowing the user to cursor-select or filter candidate strings.
@@ -544,6 +525,8 @@ To safeguard the daemon against headless states where a developer initiates a lo
 
 * **UI Cleanup Signal:** Concurrently, the daemon issues a `ui/clear_prompt` notification to the orphaned client ID, commanding the NeoVim instance to force-close any dangling floating dialog modules, ensuring buffer workspaces remain unpolluted.
 
+
+
 ---
 
 ## 11. Secure Credential Storage & Data Sanitization Framework
@@ -554,7 +537,7 @@ To honor the zero-config mandate without compromising cryptographic hygiene, the
 
 The daemon utilizes a tiered resolution strategy to locate and store multi-provider API keys. It prioritizes hardware-backed or OS-level credential managers before falling back to a cryptographically hardened local ledger.
 
-```
+```text
 [Fetch API Key Request]
          │
          ▼
@@ -576,25 +559,23 @@ The daemon utilizes a tiered resolution strategy to locate and store multi-provi
 
 | Storage Tier | Target Platform | Underlying Technical Provider | Headless/Bypass Mitigation |
 | --- | --- | --- | --- |
-| **Tier 1: Environment Loop** | All Platforms | Native `os.environ` inspection. | Bypasses storage logic completely if keys are pre-injected in the host shell context. |
-| **Tier 2: OS Secure Store** | macOS <br>
+| **Tier 1: Environment Loop** | All Platforms | Native `os.environ` inspection.
 
-<br>
+ | Bypasses storage logic completely if keys are pre-injected in the host shell context.
 
-<br> Windows <br>
+ |
+| **Tier 2: OS Secure Store** | macOS, Windows, Linux (Desktop)
 
-<br>
+ | `Security.framework` (Keychain), Windows Credential Manager, Secret Service API (`dbus-fast`).
 
-<br> Linux (Desktop) | `Security.framework` (Keychain) <br>
+ | If `dbus` initialization timeouts occur or headless SSH/Docker states are detected, instantly trips failover to Tier 3.
 
-<br>
+ |
+| **Tier 3: Permissive Ledger** | All Platforms | Local AES-256-GCM encrypted payload (`.json`) bound to file permissions.
 
-<br> Windows Credential Manager <br>
+ | Guarded by OS-enforced access controls and a zero-config derived hardware key.
 
-<br>
-
-<br> Secret Service API (`dbus-fast`) | If `dbus` initialization timeouts occur or headless SSH/Docker states are detected, instantly trips failover to Tier 3. |
-| **Tier 3: Permissive Ledger** | All Platforms | Local AES-256-GCM encrypted payload (`.json`) bound to file permissions. | Guarded by OS-enforced access controls and a zero-config derived hardware key. |
+ |
 
 To support this tiering, the PEP 723 inline script metadata is expanded to declare explicit platform extraction dependencies:
 
@@ -622,8 +603,11 @@ When running inside an isolated Docker container, a minimal window manager setup
 The master encryption key is generated deterministically by gathering low-level immutable system traits, eliminating the need for user-facing passphrases:
 
 * **Linux:** `/var/lib/dbus/machine-id` or `/etc/machine-id`
+
 * **macOS:** `IOPlatformUUID` via `IORegistryEntry`
+
 * **Windows:** `MachineGuid` registry entry from `HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Cryptography`
+
 
 The gathered string payloads are concatenated and fed into a High-Density Key Derivation Function (HKDF) to yield a symmetric key:
 
@@ -637,7 +621,7 @@ $$K_{\text{crypt}} = \text{HKDF-Expand}(K_{\text{master}}, \text{Info}=b\text{"a
 
 The multi-provider credential dictionary is transformed into an encrypted packet using **AES-256-GCM**. The resulting file layout packages the components together:
 
-```
+```text
 ┌──────────────────────────────┬──────────────────────────────┬──────────────────────────────┐
 │      12-Byte Random IV       │      Variable Ciphertext     │      16-Byte Auth Tag        │
 └──────────────────────────────┴──────────────────────────────┴──────────────────────────────┘
@@ -650,8 +634,10 @@ Windows runtimes short-circuit this manual derivation block entirely by calling 
 
 If the system falls back to a disk-persisted file ledger, the daemon enforces platform-specific operational locks during file creation to insulate the ledger from multi-tenant sniffing or parallel malicious local processes.
 
-* **Unix / macOS Hardening:**
-Before executing any write operation to the storage path (e.g., `~/.config/alchemist/vault.enc`), the daemon validates and alters the file creation mask natively using Python's `os` layer:
+* **Unix / macOS Hardening:** Before executing any write operation to the storage path (e.g., `~/.config/alchemist/vault.enc`), the daemon validates and alters the file creation mask natively using Python's `os` layer:
+
+
+
 ```python
 import os
 
@@ -661,17 +647,17 @@ fd = os.open(vault_path, flags, 0o600)
 with os.fdopen(fd, 'w') as vault_file:
     vault_file.write(encrypted_payload)
 
+```
 
-* **Windows ACL Hardening:**
-  The daemon overrides Windows inheritance attributes using explicit Security Identifiers (SIDs). Access is restricted strictly to the current user's SID (`WinLocalSystemSid` or the active executing User Account SID), forcefully denying access rules to the `Everyone` group or guest roles.
+* **Windows ACL Hardening:** The daemon overrides Windows inheritance attributes using explicit Security Identifiers (SIDs). Access is restricted strictly to the current user's SID (`WinLocalSystemSid` or the active executing User Account SID), forcefully denying access rules to the `Everyone` group or guest roles.
+
+
 
 ### D. Memory and Log Leakage Safeties
 
 Because credentials flow heavily through the orchestration layer to drive automated key rotation across `litellm` calls, a multi-layered data sanitization pipeline runs across all daemon boundaries.
 
-```
-```
-```
+```text
    [Raw API Key / Credential Processing]
                      │
                      ▼
@@ -689,10 +675,14 @@ Because credentials flow heavily through the orchestration layer to drive automa
    │     Regex Logging Scrubber        │ (Scrub Standard Out / Tracebacks)
    └───────────────────────────────────┘
 
+```
+
 #### 1. In-Memory Typestate Masking
+
 All inbound JSON-RPC data models representing credential operations map raw strings directly into Pydantic `SecretStr` fields. Calling `print()`, dumping models to dicts, or running standard debugging routines returns a masked string value (`**********`), keeping secrets out of accidental terminal echoes or tracebacks.
 
 #### 2. LiteLLM & Database Logging Filters
+
 A customized logging execution proxy hooks directly into the logger stream to prevent keys from leaking into the SQLite ledger or standard output dumps:
 
 ```python
