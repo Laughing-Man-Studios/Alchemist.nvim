@@ -84,6 +84,8 @@ To eliminate installation friction, dependency management and runtime bootstrapp
 | **2. Engine Check** | Lua Host | Scans the system path for `uv`. If absent, downloads the native platform-specific single binary directly from GitHub releases to `stdpath("data")`. |
 | **3. Dependencies** | Python Metadata | Employs inline PEP 723 declarations:<br>
 
+<br>
+
 <br>`# /// script`<br>
 
 <br>`# dependencies = ["aider-chat>=0.70.0", "litellm>=1.0.0", "pydantic>=2.0.0", "aiosqlite>=0.20.0"]`<br>
@@ -231,15 +233,15 @@ To resolve conflicts between NeoVim's in-memory buffer states and Aider's file-s
 ## 8. Risks and Mitigation Strategies
 
 * **Risk:** Upstream structural modifications or system prompt alterations to `aider-chat` break backend parsing models.
-* *Mitigation:* Pin dependency ranges directly inside the PEP 723 inline script metadata configuration blocks (e.g., `aider-chat>=0.70.0,<0.71.0`) and handle ecosystem updates deterministically through rigorous regression checks.
+* **Mitigation:** Pin dependency ranges directly inside the PEP 723 inline script metadata configuration blocks (e.g., `aider-chat>=0.70.0,<0.71.0`) and handle ecosystem updates deterministically through rigorous regression checks.
 
 
 * **Risk:** High-intensity processing files block standard input/output loops or freeze background processes.
-* *Mitigation:* Decouple background networking, file processing, and API orchestration loops from the central server execution pipeline using native Python `asyncio` loop abstractions.
+* **Mitigation:** Decouple background networking, file processing, and API orchestration loops from the central server execution pipeline using native Python `asyncio` loop abstractions.
 
 
 * **Risk:** Orphaned master processes remain alive after editor instances close, consuming resources.
-* *Mitigation:* **Reference-Counted Shutdown Protocol**. Every connected client maintains an active stream channel. When a channel breaks, the daemon decrements its internal counter. If `active_clients == 0`, a **15-second grace period** begins. If no reconnection occurs, the daemon flushes telemetry data, closes socket files, and terminates cleanly via `sys.exit(0)`.
+* **Mitigation:** **Reference-Counted Shutdown Protocol**. Every connected client maintains an active stream channel. When a channel breaks, the daemon decrements its internal counter. If `active_clients == 0`, a **15-second grace period** begins. If no reconnection occurs, the daemon flushes telemetry data, closes socket files, and terminates cleanly via `sys.exit(0)`.
 
 
 
@@ -270,3 +272,136 @@ To resolve conflicts between NeoVim's in-memory buffer states and Aider's file-s
 
 * **pytest & pytest-asyncio:** Tests state machine boundaries, concurrency behaviors, and multi-client connection handshakes under simulated `429` error conditions.
 * **vusted:** Executes headless NeoVim continuous integration passes to test UI layouts, keymaps, and JSON-RPC pipe stability.
+
+---
+
+## 10. Interactive Upstream Interception & Bidirectional Prompting Protocol
+
+To prevent the headless Python daemon from stalling during upstream blocking reads (e.g., `input()`, `yes_no_prompt()`), the system decouples the synchronous execution of the `aider` agent core from the main asynchronous IPC event loop. This is achieved via a **Thread-Isolated Asynchronous Sync-Bridge**.
+
+### A. Thread-Pool Isolation and the Async Bridge
+
+Because `aider`'s core loop expects synchronous answers to its prompt checkpoints, running it directly inside the main `asyncio` loop will completely freeze the daemon.
+
+1. **Worker Thread Execution:** Each client session's `aider` execution engine is offloaded to a distinct thread using Python’s `concurrent.futures.ThreadPoolExecutor`.
+2. **The `InputOutput` Interceptor:** The custom overridden `InputOutput` class intercepts methods like `yes_no_prompt` and `choose_from_list` within the worker thread.
+3. **Cross-Thread Future Resolution:** When an interactive checkpoint is reached, the worker thread schedules a JSON-RPC request onto the main thread's `asyncio` loop via `asyncio.run_coroutine_threadsafe()`. The worker thread then safely blocks, waiting for an internal `threading.Event` or future to resolve.
+
+```python
+# Conceptual architecture inside the overridden InputOutput class
+import asyncio
+import threading
+
+class DaemonInputOutput(aider.io.InputOutput):
+    def __init__(self, main_loop, rpc_server, client_channel):
+        self.main_loop = main_loop
+        self.rpc_server = rpc_server
+        self.client_channel = client_channel
+
+    def yes_no_prompt(self, prompt, default="y"):
+        # Create a thread-safe coordination future
+        future = asyncio.run_coroutine_threadsafe(
+            self.rpc_server.send_client_request(
+                self.client_channel, 
+                "server/request_confirmation", 
+                {"prompt_type": "boolean", "message": prompt, "default": default}
+            ),
+            self.main_loop
+        )
+        # Block the worker thread until the NeoVim UI responds via the main event loop
+        return future.result(timeout=60.0)
+
+```
+
+### B. Bidirectional JSON-RPC 2.0 Data Contracts
+
+To handle queries originating from the server, the standard request flow is inverted. The server issues a request containing a unique tracking `id`, which the client must match in its response envelope.
+
+#### 1. Server-Initiated Request (Binary Choice)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "server/request_confirmation",
+  "params": {
+    "prompt_type": "boolean",
+    "message": "File src/utils/math.py is not under git control. Do you want to add it?",
+    "default_value": true
+  },
+  "id": "srv_req_9921a"
+}
+
+```
+
+#### 2. Client-Initiated Response
+
+```json
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "confirmed": true,
+    "value": "y"
+  },
+  "id": "srv_req_9921a"
+}
+
+```
+
+#### 3. Server-Initiated Request (Textual Input/Token Consent)
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "server/request_confirmation",
+  "params": {
+    "prompt_type": "text",
+    "message": "Operation will consume 45,000 tokens. Type 'PROCEED' to continue:",
+    "default_value": ""
+  },
+  "id": "srv_req_9921b"
+}
+
+```
+
+### C. Context-Aware UI Dispatcher (NeoVim/Lua)
+
+Upon receiving a `server/request_confirmation` packet down the JSON-RPC pipe, the NeoVim Lua client decodes the `prompt_type` parameter to dynamically construct the minimal required user interface using `nui.nvim`.
+
+| `prompt_type` | UI Manifestation Strategy | Native Interaction Mapping |
+| --- | --- | --- |
+| **`boolean`** | Floating split panel showing a minimized confirmation dialog with explicit `[y]`es and `[n]`o visual triggers. | `y` or `<CR>` resolves to true;<br>
+
+<br>`n` or `<Esc>` resolves to false. |
+| **`text`** | Centered floating popup window (`nui.Input`) locking keystroke focus onto an explicit text entry buffer. | `<CR>` dispatches the raw text field string;<br>
+
+<br>`<Esc>` aborts. |
+| **`selection`** | Interactive choice list viewport (`nui.Menu`), allowing the user to cursor-select or filter candidate strings. | `j`/`k` to navigate, `<CR>` to submit selection choice. |
+
+```lua
+-- Lua Dispatcher Snippet
+local function handle_server_request(rpc_payload)
+  local prompt_type = rpc_payload.params.prompt_type
+  local msg = rpc_payload.params.message
+  local req_id = rpc_payload.id
+
+  if prompt_type == "boolean" then
+    -- Construct efficient binary choice box using nui.nvim
+    show_nui_confirm_modal(msg, function(user_choice)
+      send_json_rpc_response(req_id, { confirmed = user_choice, value = user_choice and "y" or "n" })
+    end)
+  elseif prompt_type == "text" then
+    show_nui_input_modal(msg, function(user_text)
+      send_json_rpc_response(req_id, { confirmed = true, value = user_text })
+    end)
+  end
+end
+
+```
+
+### D. Abandonment, Timeout, and Recovery Mechanics
+
+To safeguard the daemon against headless states where a developer initiates a long operation and walks away, the system implements an internal garbage-collection engine for pending prompts.
+
+* **Hard Timeout Envelope:** Every server-initiated request sent to a NeoVim client carries an aggressive, configurable 60-second execution lifecycle managed by `asyncio.wait_for`.
+* **Fallback Resolution:** If the 60-second window expires before the Lua layer returns a response, the main thread forces completion of the blocked future, substituting the `default_value` specified within the structural contract (typically rejecting structural mutations or choosing the least disruptive fallback).
+* **UI Cleanup Signal:** Concurrently, the daemon issues a `ui/clear_prompt` notification to the orphaned client ID, commanding the NeoVim instance to force-close any dangling floating dialog modules, ensuring buffer workspaces remain unpolluted.
