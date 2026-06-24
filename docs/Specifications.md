@@ -1,5 +1,3 @@
-Here is the cleaned and properly formatted version of your markdown document, with the excess spacing and broken line breaks resolved:
-
 # High-Level Architecture Specification: Alchemist.nvim (Automated Hybrid Daemon)
 
 This specification outlines the architecture for a zero-config, native NeoVim AI assistant plugin. It wraps the `aider` agent core and `litellm` SDK into a single headless Python background daemon, managed invisibly via `uv`. The system maximizes free-tier LLM API usage through smart key rotation, adaptive token/quota management, and task-specific routing while coordinating seamlessly across multiple concurrent editor instances.
@@ -108,18 +106,10 @@ To eliminate installation friction, dependency management and runtime bootstrapp
 
 | Step | Responsible Layer | Technical Implementation Action |
 | --- | --- | --- |
-| **1. Hook Lifecycle** | NeoVim (`lazy.nvim`) | Triggers the `build` or `setup` configuration step on plugin pull.
-
- |
-| **2. Engine Check** | Lua Host | Scans the system path for `uv`. If absent, downloads the native platform-specific single binary directly from GitHub releases to `stdpath("data")`.
-
- |
-| **3. Dependencies** | Python Metadata | Employs inline PEP 723 declarations: `# /// script`, `# dependencies = ["aider-chat>=0.70.0", "litellm>=1.0.0", "pydantic>=2.0.0", "aiosqlite>=0.20.0"]`, `# ///`.
-
- |
-| **4. Process Execution** | Lua Process Host | Boots the master daemon (if elected) via `uv run --quiet free_aider_daemon.py --master`. `uv` isolates and caches the script requirements silently on initial boot.
-
- |
+| **1. Hook Lifecycle** | NeoVim (`lazy.nvim`) | Triggers the `build` or `setup` configuration step on plugin pull.|
+| **2. Engine Check** | Lua Host | Scans the system path for `uv`. If absent, downloads the native platform-specific single binary directly from GitHub releases to `stdpath("data")`.|
+| **3. Dependencies** | Python Metadata | Employs inline PEP 723 declarations: `# /// script`, `# dependencies = ["aider-chat>=0.70.0", "litellm>=1.0.0", "pydantic>=2.0.0", "aiosqlite>=0.20.0"]`, `# ///`.|
+| **4. Process Execution** | Lua Process Host | Boots the master daemon (if elected) via `uv run --quiet free_aider_daemon.py --master`. `uv` isolates and caches the script requirements silently on initial boot. |
 
 ---
 
@@ -204,15 +194,9 @@ The daemon routes processing across providers depending on task dimensions to mi
 
 | Task Phase | Primary Choice | Secondary Fallback | Context / Pruning Logic |
 | --- | --- | --- | --- |
-| **Repository Indexing & Mapping** | Gemini 2.5 Flash | OpenRouter (Large Free) | Maps whole project skeleton; takes advantage of Gemini's 1M token free-tier structure.
-
- |
-| **Code Modification / Diff Creation** | DeepSeek-V3 | Qwen-2.5-Coder (via Groq) | Isolates target file segments using Tree-sitter to reduce prompt payload.
-
- |
-| **Exploratory Architecture Chat** | Qwen-2.5-72B | Gemini 2.5 Flash | Generic code conversation with low token footprints.
-
- |
+| **Repository Indexing & Mapping** | Gemini 2.5 Flash | OpenRouter (Large Free) | Maps whole project skeleton; takes advantage of Gemini's 1M token free-tier structure.|
+**Code Modification / Diff Creation** | DeepSeek-V3 | Qwen-2.5-Coder (via Groq) | Isolates target file segments using Tree-sitter to reduce prompt payload.|
+| **Exploratory Architecture Chat** | Qwen-2.5-72B | Gemini 2.5 Flash | Generic code conversation with low token footprints.|
 
 ### Real-Time Key State Propagation Protocol
 
@@ -476,21 +460,9 @@ Upon receiving a `server/request_confirmation` packet down the JSON-RPC pipe, th
 
 | `prompt_type` | UI Manifestation Strategy | Native Interaction Mapping |
 | --- | --- | --- |
-| **`boolean`** | Floating split panel showing a minimized confirmation dialog with explicit `[y]`es and `[n]`o visual triggers.
-
- | `y` or `<CR>` resolves to true; `n` or `<Esc>` resolves to false.
-
- |
-| **`text`** | Centered floating popup window (`nui.Input`) locking keystroke focus onto an explicit text entry buffer.
-
- | `<CR>` dispatches the raw text field string; `<Esc>` aborts.
-
- |
-| **`selection`** | Interactive choice list viewport (`nui.Menu`), allowing the user to cursor-select or filter candidate strings.
-
- | `j`/`k` to navigate, `<CR>` to submit selection choice.
-
- |
+| **`boolean`** | Floating split panel showing a minimized confirmation dialog with explicit `[y]`es and `[n]`o visual triggers. | `y` or `<CR>` resolves to true; `n` or `<Esc>` resolves to false. |
+| **`text`** | Centered floating popup window (`nui.Input`) locking keystroke focus onto an explicit text entry buffer.| `<CR>` dispatches the raw text field string; `<Esc>` aborts.|
+| **`selection`** | Interactive choice list viewport (`nui.Menu`), allowing the user to cursor-select or filter candidate strings.| `j`/`k` to navigate, `<CR>` to submit selection choice. |
 
 ```lua
 -- Lua Dispatcher Snippet
@@ -559,23 +531,9 @@ The daemon utilizes a tiered resolution strategy to locate and store multi-provi
 
 | Storage Tier | Target Platform | Underlying Technical Provider | Headless/Bypass Mitigation |
 | --- | --- | --- | --- |
-| **Tier 1: Environment Loop** | All Platforms | Native `os.environ` inspection.
-
- | Bypasses storage logic completely if keys are pre-injected in the host shell context.
-
- |
-| **Tier 2: OS Secure Store** | macOS, Windows, Linux (Desktop)
-
- | `Security.framework` (Keychain), Windows Credential Manager, Secret Service API (`dbus-fast`).
-
- | If `dbus` initialization timeouts occur or headless SSH/Docker states are detected, instantly trips failover to Tier 3.
-
- |
-| **Tier 3: Permissive Ledger** | All Platforms | Local AES-256-GCM encrypted payload (`.json`) bound to file permissions.
-
- | Guarded by OS-enforced access controls and a zero-config derived hardware key.
-
- |
+| **Tier 1: Environment Loop** | All Platforms | Native `os.environ` inspection.| Bypasses storage logic completely if keys are pre-injected in the host shell context.|
+| **Tier 2: OS Secure Store** | macOS, Windows, Linux (Desktop)| `Security.framework` (Keychain), Windows Credential Manager, Secret Service API (`dbus-fast`). | If `dbus` initialization timeouts occur or headless SSH/Docker states are detected, instantly trips failover to Tier 3.|
+| **Tier 3: Permissive Ledger** | All Platforms | Local AES-256-GCM encrypted payload (`.json`) bound to file permissions. | Guarded by OS-enforced access controls and a zero-config derived hardware key.|
 
 To support this tiering, the PEP 723 inline script metadata is expanded to declare explicit platform extraction dependencies:
 
