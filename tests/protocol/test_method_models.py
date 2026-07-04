@@ -1,6 +1,13 @@
 """
-Tests for method-specific param models (client->daemon and daemon->client).
+Unit tests for the Alchemist protocol parameter models.
+
+This module validates the Pydantic models used for communication between the client and the daemon.
+It covers both client-to-daemon parameter models (e.g., ClientInitializeParams, AgentSubmitPromptParams, 
+BufferSnapshot) and daemon-to-client response models (e.g., ServerRequestConfirmationParams, 
+ConfirmationResult). The tests ensure that required fields are present, UUIDs are valid, 
+enums/modes are correctly constrained, and default values are applied correctly.
 """
+
 from __future__ import annotations
 
 import uuid

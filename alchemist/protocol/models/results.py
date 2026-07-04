@@ -1,5 +1,16 @@
 """
-Method result models for common successful JSON-RPC responses.
+This module defines Pydantic models that represent the successful response structures 
+for various JSON-RPC methods within the system. 
+
+The models are organized by functional domain:
+
+- client/initialize: Models for handshake and version negotiation.
+- daemon: Models for daemon versioning and health monitoring.
+- agent: Models for managing asynchronous agent tasks, including prompt submission, 
+  job cancellation, status tracking, and file system visibility.
+- config: Models for inspecting provider availability and managing masked API key information.
+
+These models ensure type-safe parsing of RPC responses across the client-daemon-agent architecture.
 """
 from __future__ import annotations
 

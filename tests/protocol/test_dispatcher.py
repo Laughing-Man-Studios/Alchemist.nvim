@@ -1,5 +1,10 @@
 """
-Tests for alchemist.protocol.dispatcher — Dispatcher.
+Unit tests for the Dispatcher class in the alchemist protocol.
+
+This module contains test suites for validating the core dispatching logic, including:
+- JSON-RPC request handling (valid requests, unknown methods, invalid parameters, and internal errors).
+- JSON-RPC notification handling (ensuring notifications return None and exceptions in handlers do not propagate).
+- Validation of JSON-RPC structure and compliance.
 """
 from __future__ import annotations
 

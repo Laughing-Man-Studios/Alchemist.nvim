@@ -23,10 +23,12 @@ JsonRpcId = Union[ClientRequestId, ServerRequestId]
 # Regexes
 # ---------------------------------------------------------------------------
 
+# Regular expression for validating standard UUID formats (case-insensitive).
 _UUID_RE = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
     re.IGNORECASE,
 )
+# Regular expression to match strings starting with 'srv_req_'
 _SRV_REQ_RE = re.compile(r"^srv_req_")
 
 
@@ -34,16 +36,28 @@ _SRV_REQ_RE = re.compile(r"^srv_req_")
 # Validators
 # ---------------------------------------------------------------------------
 
+    """Check if the provided string matches the expected UUID format for client request IDs."""
 def is_client_request_id(id_: str) -> bool:
     """Return True if id_ is a valid UUID-format client request ID."""
     return bool(_UUID_RE.match(id_))
 
 
+    """Check if the given string matches the server request ID pattern (srv_req_*)."""
 def is_server_request_id(id_: str) -> bool:
     """Return True if id_ is a valid server-request ID (srv_req_*)."""
     return bool(_SRV_REQ_RE.match(id_))
 
 
+# Validates that the provided string is a valid client request ID format.
+#
+# Args:
+#     id_: The client request ID string to validate.
+#
+# Returns:
+#     The validated client request ID.
+#
+# Raises:
+#     ValueError: If the ID does not match the expected format.
 def validate_client_request_id(id_: str) -> ClientRequestId:
     """Raise ValueError if id_ is not a valid client request ID."""
     if not is_client_request_id(id_):
@@ -51,6 +65,16 @@ def validate_client_request_id(id_: str) -> ClientRequestId:
     return id_
 
 
+# Validates that the provided string follows the required server request ID format.
+#
+# Args:
+#     id_: The string to validate.
+#
+# Returns:
+#     The validated server request ID.
+#
+# Raises:
+#     ValueError: If the ID does not match the expected 'srv_req_*' pattern.
 def validate_server_request_id(id_: str) -> ServerRequestId:
     """Raise ValueError if id_ is not a valid server request ID."""
     if not is_server_request_id(id_):
@@ -64,11 +88,13 @@ def validate_server_request_id(id_: str) -> ServerRequestId:
 # Factories
 # ---------------------------------------------------------------------------
 
+#Generates a unique client request ID using a UUID4 string.
 def make_client_request_id() -> ClientRequestId:
     """Generate a fresh UUID client request ID."""
     return str(uuid.uuid4())
 
 
+#Generates a unique server request ID by prefixing a provided suffix with 'srv_req_'.
 def make_server_request_id(suffix: str) -> ServerRequestId:
     """Create a server request ID from an arbitrary suffix."""
     return f"srv_req_{suffix}"

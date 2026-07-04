@@ -1,4 +1,19 @@
 """
+This module implements the method registry for the Alchemist JSON-RPC protocol.
+
+It provides the core infrastructure for mapping JSON-RPC method names to their respective
+parameter models, result models, asynchronous handlers, and communication directions.
+
+The registry supports two primary communication flows:
+- `client_to_daemon`: Requests sent from the client to the daemon (e.g., agent actions, config updates).
+- `daemon_to_client`: Notifications or requests sent from the daemon to the client (e.g., UI updates, server requests).
+
+Key components include:
+- `MethodEntry`: A data container for method metadata.
+- `MethodRegistry`: A central repository for managing and looking up method entries.
+- `build_default_registry`: A factory function that populates a registry with the standard V1 set of
+  Alchemist protocol methods, allowing for custom handler overrides.
+"""
 Method registry for the Alchemist JSON-RPC protocol.
 
 Maps method strings to (params_model, result_model, handler, direction).
@@ -73,6 +88,10 @@ class MethodEntry:
     direction: Direction
 
 
+"""A registry that manages and provides access to MethodEntry records indexed by their method name.
+
+Provides functionality to register new method entries, retrieve entries by name, and list all registered method names.
+"""
 class MethodRegistry:
     """Central map of method strings to MethodEntry records."""
 
@@ -89,11 +108,29 @@ class MethodRegistry:
         return list(self._entries.keys())
 
 
+"""A no-op placeholder function used to prevent errors when calling unimplemented methods during Phase 1."""
 def _placeholder_handler(*args: Any, **kwargs: Any) -> None:
     """Default no-op handler for methods not yet implemented in Phase 1."""
     return None
 
 
+"""Initializes a MethodRegistry with a standard set of client-to-daemon and daemon-to-client methods.
+
+This function populates the registry with predefined method entries, including client requests, 
+daemon commands, agent actions, and various notifications. It allows for providing 
+custom handlers via the `override_handlers` parameter to replace default placeholder handlers.
+
+Parameters
+----------
+override_handlers : Optional[Dict[str, AsyncHandler]]
+    A mapping of method names to specific handler implementations, used to override 
+    the default placeholder handlers during testing or specialized execution.
+
+Returns
+-------
+MethodRegistry
+    A fully populated registry containing all V1 method definitions.
+"""
 def build_default_registry(
     override_handlers: Optional[Dict[str, AsyncHandler]] = None,
 ) -> MethodRegistry:

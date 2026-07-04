@@ -17,12 +17,17 @@ from typing import Any, Dict, Literal, Optional, Union
 from pydantic import BaseModel, field_validator, model_validator
 
 
+"""Represents a standard JSON-RPC error object containing a numeric code, a descriptive message, and optional additional data.
+"""
 class JsonRpcErrorObject(BaseModel):
     code: int
     message: str
     data: Optional[Any] = None
 
 
+"""
+Represents a JSON-RPC 2.0 request object, ensuring that 'params' is a dictionary rather than a list.
+"""
 class JsonRpcRequest(BaseModel):
     jsonrpc: Literal["2.0"]
     id: Union[str, int]
@@ -37,6 +42,12 @@ class JsonRpcRequest(BaseModel):
         return v
 
 
+"""
+Represents a JSON-RPC 2.0 notification message.
+
+Ensures that the 'params' field is a dictionary object rather than a list,
+adhering to the JSON-RPC specification for notifications.
+"""
 class JsonRpcNotification(BaseModel):
     jsonrpc: Literal["2.0"]
     method: str
@@ -50,12 +61,14 @@ class JsonRpcNotification(BaseModel):
         return v
 
 
+"""Represents a successful JSON-RPC 2.0 response containing the result of a request."""
 class JsonRpcSuccessResponse(BaseModel):
     jsonrpc: Literal["2.0"]
     id: Union[str, int]
     result: Any
 
 
+"""Represents a JSON-RPC 2.0 error response object containing the protocol version, request ID, and error details."""
 class JsonRpcErrorResponse(BaseModel):
     jsonrpc: Literal["2.0"]
     id: Optional[Union[str, int]]
@@ -74,6 +87,13 @@ EnvelopeType = Union[
 ]
 
 
+"""Parses a raw JSON-RPC message and returns the corresponding envelope model.
+
+Validates the structure of the input dictionary to determine if it is a
+request, notification, success response, or error response based on
+required JSON-RPC fields. Raises ValueError if the input is invalid,
+not a dictionary, or lacks necessary fields.
+"""
 def classify_message(raw: Any) -> EnvelopeType:
     """Classify a decoded JSON dict into the appropriate envelope model.
 

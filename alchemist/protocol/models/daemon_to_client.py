@@ -1,5 +1,13 @@
 """
-Daemon -> Client notification and server-initiated request models.
+This module defines the Pydantic data models used for communication between the daemon, the agent, and the client.
+
+It categorizes messages into three primary functional areas:
+
+1. UI Notifications: Models for updating the user interface, such as live status updates from agent operations, signaling when diffs are ready for review, or instructing the client to clear prompt inputs.
+2. Agent Notifications: Models for streaming text deltas from the agent to the client.
+3. Daemon Notifications: Models for system-level events, including API key rotations, error reporting, and exhaustion of provider resources.
+
+Additionally, the module defines the structure for server-initiated requests, allowing the daemon to request user confirmation or input via the client, and the corresponding result structures used for client responses.
 """
 from __future__ import annotations
 

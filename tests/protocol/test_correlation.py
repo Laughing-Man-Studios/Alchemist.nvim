@@ -1,5 +1,13 @@
 """
-Tests for alchemist.protocol.correlation — CorrelationTracker.
+This module contains unit tests for the CorrelationTracker class within the alchemist.protocol.correlation module.
+
+The tests verify the core functionality of the CorrelationTracker, including:
+- Mapping asynchronous request IDs to futures to resolve pending requests with JSON-RPC style responses.
+- Correctly handling successful results and error responses by propagating exceptions to the associated futures.
+- Raising UnknownResponseIdError when attempting to resolve a response with an unregistered ID.
+- Properly expiring and cancelling pending requests.
+- Maintaining an accurate count of pending requests via the length property.
+- Supporting both client-side and server-side request ID patterns.
 """
 from __future__ import annotations
 

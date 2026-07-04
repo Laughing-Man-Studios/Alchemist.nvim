@@ -38,6 +38,13 @@ class FrameError(Exception):
     data:    Optional structured error data dict.
     """
 
+    """Initialize a new error instance with a status code, message, and optional metadata.
+
+    Args:
+        code: The error status code.
+        message: A descriptive error message.
+        data: Optional additional information associated with the error.
+    """
     def __init__(self, code: int, message: str, data: Any = None) -> None:
         super().__init__(message)
         self.code = code
@@ -55,6 +62,11 @@ class NdjsonReader:
         self._stream = stream
         self._buf = bytearray()
 
+    """Read and return the next complete JSON-RPC frame as a plain dict.
+
+    Continuously reads from the underlying stream into a buffer until a
+    complete frame is parsed. 
+    """
     async def read_frame(self) -> dict:
         """Read and return the next complete JSON-RPC frame as a plain dict.
 
@@ -86,6 +98,21 @@ class NdjsonReader:
             frames.append(result)
         return frames
 
+    """
+    Attempts to extract and parse a single JSON-RPC frame from the internal buffer.
+
+    This method looks for a newline delimiter to identify a complete frame. It handles
+    size validation to prevent memory exhaustion, skips empty lines, performs UTF-8
+    decoding, and validates that the resulting JSON is a non-batch dictionary object.
+
+    Returns:
+        dict: The parsed JSON object if successful.
+        None: If no complete frame is available in the buffer.
+
+    Raises:
+        FrameError: If the frame exceeds the maximum size, contains invalid UTF-8,
+                    contains invalid JSON, or violates JSON-RPC structure requirements.
+    """
     def _try_parse(self) -> dict | None:
         """Try to extract one frame from the buffer.  Returns None if incomplete."""
         newline_pos = self._buf.find(b"\n")
@@ -148,6 +175,7 @@ class NdjsonWriter:
     def __init__(self, stream: Any) -> None:
         self._stream = stream
 
+    """Serializes a dictionary to a UTF-8 encoded JSON string, appends a newline, and writes it to the stream, awaiting the drain operation to ensure the data is sent."""
     async def write_frame(self, obj: dict) -> None:
         """Serialize *obj* as UTF-8 JSON and write it as a newline-terminated frame."""
         payload = json.dumps(obj, ensure_ascii=False) + "\n"

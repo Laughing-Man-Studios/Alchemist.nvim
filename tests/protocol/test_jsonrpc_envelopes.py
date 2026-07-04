@@ -1,5 +1,48 @@
 """
-Tests for alchemist.protocol.jsonrpc — envelope models and classifier.
+File: tests/protocol/test_jsonrpc_envelopes.py
+
+Detailed Summary:
+This test file validates the JSON-RPC 2.0 envelope models and message classification
+functionality in the alchemist.protocol.jsonrpc module. It contains comprehensive tests
+for four main components:
+
+1. JsonRpcRequest Model:
+   - Tests valid request creation with required fields (jsonrpc, id, method)
+   - Verifies optional params field handling (must be dict if present)
+   - Validates rejection of:
+     * Wrong JSON-RPC version (must be "2.0")
+     * Missing required fields (jsonrpc, method)
+     * Invalid params type (arrays are rejected)
+
+2. JsonRpcNotification Model:
+   - Tests valid notification creation (no id field)
+   - Verifies params must be a dict if present
+   - Confirms proper method field handling
+
+3. JsonRpcSuccessResponse Model:
+   - Tests valid success response creation with result field
+   - Verifies proper id field handling
+
+4. JsonRpcErrorResponse Model:
+   - Tests valid error response creation with error object
+   - Verifies null id is allowed in error responses
+   - Confirms proper error code and message handling
+
+5. classify_message Function:
+   - Tests proper classification of all message types:
+     * Requests (contain id and method)
+     * Notifications (contain method, no id)
+     * Success responses (contain id and result)
+     * Error responses (contain id and error)
+   - Validates error cases:
+     * Batch arrays (rejected with ValueError)
+     * Missing jsonrpc field
+     * Wrong jsonrpc version
+     * Non-dict input
+
+The tests use Pydantic's model_validate for schema validation and pytest for
+assertions and error case testing. All tests follow JSON-RPC 2.0 specification
+requirements.
 """
 from __future__ import annotations
 

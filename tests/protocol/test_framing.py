@@ -1,5 +1,43 @@
 """
-Tests for alchemist.protocol.framing — NdjsonReader / NdjsonWriter.
+Comprehensive test suite for NDJSON framing protocol implementation.
+
+This test file validates the functionality of `NdjsonReader` and `NdjsonWriter` classes
+from `alchemist.protocol.framing`, which handle the framing layer of the JSON-RPC protocol
+over streams. The tests cover:
+
+CORE FUNCTIONALITY:
+- NDJSON frame parsing from byte streams
+- Frame serialization to byte streams
+- Error handling for malformed input
+- Size limits enforcement
+
+TEST CATEGORIES:
+1. NdjsonReader.feed() - Synchronous frame parsing from byte chunks
+   - Complete single frames
+   - Multiple frames in single chunks
+   - Fragmented frame reassembly
+   - Empty line handling
+   - String escaping and special characters
+   - Error cases (invalid JSON, UTF-8, batch arrays)
+
+2. NdjsonReader async - Asynchronous stream reading
+   - Complete frame reading
+   - Fragmented stream reassembly
+
+3. NdjsonWriter - Frame serialization
+   - JSON serialization with newline termination
+   - Roundtrip consistency with reader
+   - Special character handling
+
+KEY FEATURES TESTED:
+- Frame size limits (MAX_FRAME_SIZE)
+- JSON-RPC protocol compliance
+- Error code mapping (PARSE_ERROR, INVALID_REQUEST, FRAME_TOO_LARGE)
+- Stream interface compatibility
+- Memory stream test doubles
+
+The tests use in-memory stream stubs (`_MemStream`) to simulate network conditions
+without requiring actual I/O operations.
 """
 from __future__ import annotations
 

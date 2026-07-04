@@ -1,5 +1,11 @@
 """
-Standardized Alchemist error model and JSON-RPC error codes.
+Standardized Alchemist eror model and JSON-RPC error codes.
+Alchemist error module. 
+
+This module defines the standardized error model used across the Alchemist system, 
+including JSON-RPC error codes, custom Alchemist error codes, and structured 
+error data models for consistent error reporting and handling between the 
+client and the daemon.
 """
 from __future__ import annotations
 
@@ -23,6 +29,7 @@ INTERNAL_ERROR = -32603
 # Alchemist application error codes  (-32000 .. -32099)
 # ---------------------------------------------------------------------------
 
+"""Enumeration of error codes specific to the Alchemist system, covering API limits, internal failures, and daemon communication issues."""
 class AlchemistErrorCode(IntEnum):
     NO_KEYS_CONFIGURED = -32000
     PROVIDER_RATE_LIMITED = -32001
@@ -37,6 +44,7 @@ class AlchemistErrorCode(IntEnum):
     IPC_DISCONNECTED = -32010
     DAEMON_UNAVAILABLE = -32011
     AGENT_BUSY = -32012
+
 
 
 _HINTS: dict[AlchemistErrorCode, str] = {
@@ -90,6 +98,7 @@ def get_hint(code: AlchemistErrorCode) -> str:
 # Alchemist error data model
 # ---------------------------------------------------------------------------
 
+"""Represents structured error metadata embedded within JSON-RPC error responses, including retry logic and contextual identifiers like client, session, and project IDs."""
 class AlchemistErrorData(BaseModel):
     """Structured error data embedded inside JSON-RPC error objects."""
 
@@ -107,6 +116,19 @@ class AlchemistErrorData(BaseModel):
 # Error data factory
 # ---------------------------------------------------------------------------
 
+"""Constructs an AlchemistErrorData instance from an AlchemistErrorCode and optional metadata.
+
+Args:
+    code: The error code enum member.
+    retryable: Whether the error is transient and can be retried.
+    client_id: Optional identifier for the client.
+    session_id: Optional identifier for the session.
+    project_id: Optional identifier for the project.
+    **extra: Additional keyword arguments to be passed to AlchemistErrorData.
+
+Returns:
+    An initialized AlchemistErrorData object with a generated hint.
+"""
 def make_alchemist_error_data(
     code: AlchemistErrorCode,
     retryable: bool = False,
@@ -154,6 +176,20 @@ def make_internal_error(message: str = "Internal error") -> dict:
     return {"code": INTERNAL_ERROR, "message": message, "data": None}
 
 
+"""
+Constructs a standardized error dictionary containing an error code, message, and structured metadata.
+
+Args:
+    code: The AlchemistErrorCode enum value representing the error.
+    retryable: Whether the error is transient and can be retried.
+    client_id: Optional identifier for the client.
+    session_id: Optional identifier for the session.
+    project_id: Optional identifier for the project.
+    **extra: Additional key-value pairs to include in the error data.
+
+Returns:
+    A dictionary containing the integer error code, the error name as a message, and the serialized error data.
+"""
 def make_alchemist_error(
     code: AlchemistErrorCode,
     retryable: bool = False,
