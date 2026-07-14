@@ -1,2 +1,9 @@
 .aider*
-.mcphub.json
+__pycache__/
+*.pyc
+tests/__pycache__/
+alchemist/__pycache__/
+.mcphub/
+.venv 
+.pytest_cache 
+
