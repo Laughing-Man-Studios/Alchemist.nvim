@@ -15,25 +15,17 @@ import asyncio
 import logging
 import sys
 
+from alchemist.daemon.active_job import ActiveJobTracker
+from alchemist.daemon.broadcaster import Broadcaster
+from alchemist.daemon.dispatcher import RpcDispatcher, build_default_registry
 from alchemist.daemon.lifecycle import LifecycleManager
 from alchemist.daemon.lock import DaemonLock, LockAcquisitionError
+from alchemist.daemon.paths import ensure_config_dir, ensure_runtime_dir, get_socket_path
 from alchemist.daemon.server import IpcServer
-from alchemist.daemon.paths import ensure_config_dir, ensure_runtime_dir
+from alchemist.engine.interface import StubAssistantEngine
+from alchemist.workspace.manager import ShadowManager
+from alchemist.workspace.orchestrator import PromptOrchestrator
 
-# Temporarily mock the dispatcher for Phase 2 bootstrapping
-async def _dummy_dispatcher(payload: dict) -> dict | None:
-    req_id = payload.get("id")
-    if not req_id:
-        return None
-    return {
-        "jsonrpc": "2.0",
-        "id": req_id,
-        "error": {
-            "code": -32601,
-            "message": "Method not found",
-            "data": {"hint": "Dispatcher not yet implemented"}
-        }
-    }
 
 async def async_main():
     # Setup initial logging
@@ -58,8 +50,24 @@ async def async_main():
         lifecycle = LifecycleManager(grace_period_seconds=15.0)
         lifecycle.setup_signal_handlers()
 
-        # In a full implementation, we'd instantiate the RpcDispatcher here
-        server = IpcServer(lifecycle, _dummy_dispatcher)
+        # Workspace & Orchestrator components
+        shadow_manager = ShadowManager()
+        lifecycle.register_cleanup_callback(shadow_manager.cleanup_all)
+
+        engine = StubAssistantEngine()
+        broadcaster = Broadcaster()
+        job_tracker = ActiveJobTracker()
+
+        orchestrator = PromptOrchestrator(
+            shadow_manager=shadow_manager,
+            engine=engine,
+            job_tracker=job_tracker,
+            broadcaster=broadcaster,
+        )
+
+        registry = build_default_registry(lifecycle, get_socket_path(), orchestrator=orchestrator)
+        dispatcher = RpcDispatcher(registry)
+        server = IpcServer(lifecycle, dispatcher.dispatch)
         
         # Register server shutdown with lifecycle
         lifecycle.register_cleanup_callback(server.stop)
@@ -73,6 +81,7 @@ async def async_main():
     finally:
         logger.info("Releasing daemon lock.")
         lock.release()
+
 
 def main():
     try:

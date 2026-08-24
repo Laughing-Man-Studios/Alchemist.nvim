@@ -151,6 +151,14 @@ class AgentLintParams(ProjectScopedParams):
     """agent/lint — run the project linter via the agent."""
 
 
+class AgentAcceptDiffParams(ProjectScopedParams):
+    """agent/accept_diff — client confirms the diff was applied to live buffers."""
+
+
+class AgentRejectDiffParams(ProjectScopedParams):
+    """agent/reject_diff — client rejects diff; daemon rewinds shadow workspace."""
+
+
 # ---------------------------------------------------------------------------
 # config/* methods
 # ---------------------------------------------------------------------------

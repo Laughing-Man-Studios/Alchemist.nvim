@@ -14,10 +14,7 @@ Key components include:
 - `build_default_registry`: A factory function that populates a registry with the standard V1 set of
   Alchemist protocol methods, allowing for custom handler overrides.
 """
-Method registry for the Alchemist JSON-RPC protocol.
 
-Maps method strings to (params_model, result_model, handler, direction).
-"""
 from __future__ import annotations
 
 import dataclasses
@@ -26,6 +23,7 @@ from typing import Any, Callable, Dict, Literal, Optional, Type
 from pydantic import BaseModel
 
 from alchemist.protocol.models.client_to_daemon import (
+    AgentAcceptDiffParams,
     AgentAddFileParams,
     AgentCancelParams,
     AgentClearParams,
@@ -34,6 +32,7 @@ from alchemist.protocol.models.client_to_daemon import (
     AgentListFilesParams,
     AgentListSessionsParams,
     AgentReadOnlyParams,
+    AgentRejectDiffParams,
     AgentRepoMapParams,
     AgentResetParams,
     AgentRunParams,
@@ -61,8 +60,10 @@ from alchemist.protocol.models.daemon_to_client import (
     UiStatusUpdateParams,
 )
 from alchemist.protocol.models.results import (
+    AgentAcceptDiffResult,
     AgentCancelResult,
     AgentListFilesResult,
+    AgentRejectDiffResult,
     AgentStatusResult,
     AgentSubmitPromptResult,
     ClientInitializeResult,
@@ -166,6 +167,8 @@ def build_default_registry(
         ("agent/run",               AgentRunParams,            None),
         ("agent/test",              AgentTestParams,           None),
         ("agent/lint",              AgentLintParams,           None),
+        ("agent/accept_diff",       AgentAcceptDiffParams,     AgentAcceptDiffResult),
+        ("agent/reject_diff",       AgentRejectDiffParams,     AgentRejectDiffResult),
         # config/*
         ("config/set_key",          ConfigSetKeyParams,        None),
         ("config/list_providers",   ConfigListProvidersParams, ConfigListProvidersResult),

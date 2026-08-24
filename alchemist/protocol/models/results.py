@@ -61,6 +61,14 @@ class AgentSubmitPromptResult(BaseModel):
     job_id: Optional[str] = None
 
 
+class AgentAcceptDiffResult(BaseModel):
+    status: Literal["applied"] = "applied"
+
+
+class AgentRejectDiffResult(BaseModel):
+    status: Literal["reverted"] = "reverted"
+
+
 # ---------------------------------------------------------------------------
 # agent/cancel
 # ---------------------------------------------------------------------------
