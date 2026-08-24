@@ -54,3 +54,22 @@ class NotImplementedErrorResponse(AlchemistError):
     code = "NOT_IMPLEMENTED"
     retryable = False
     default_hint = "This feature is not yet implemented in the daemon."
+
+class ShadowSyncFailedError(AlchemistError):
+    code = "SHADOW_SYNC_FAILED"
+    retryable = False
+    default_hint = "Shadow workspace synchronization failed. Try restarting the daemon."
+
+class PatchApplyFailedError(AlchemistError):
+    code = "PATCH_APPLY_FAILED"
+    retryable = False
+    default_hint = (
+        "Patch application failed. Buffers were restored from snapshots. "
+        "Reopen the diff or retry the prompt."
+    )
+
+class ShadowWorkspaceNotInitializedError(AlchemistError):
+    code = "SHADOW_SYNC_FAILED"
+    retryable = True
+    default_hint = "No shadow workspace is active. Submit a prompt to initialize one."
+

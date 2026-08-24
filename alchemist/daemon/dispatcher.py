@@ -93,8 +93,10 @@ class RpcDispatcher:
         }
 
 
-def build_default_registry(lifecycle, socket_path) -> MethodRegistry:
-    """Build a method registry populated with stub handlers for Phase 2."""
+def build_default_registry(
+    lifecycle, socket_path, orchestrator=None
+) -> MethodRegistry:
+    """Build a method registry populated with handlers and stubs."""
     registry = MethodRegistry()
     
     async def handle_client_initialize(params: dict) -> dict:
@@ -139,9 +141,16 @@ def build_default_registry(lifecycle, socket_path) -> MethodRegistry:
         "agent/submit_prompt", "agent/cancel", "agent/status", "agent/list_sessions",
         "agent/reset", "agent/clear", "agent/add_file", "agent/drop_file", "agent/list_files",
         "agent/read_only", "agent/repo_map", "agent/run", "agent/test", "agent/lint",
+        "agent/accept_diff", "agent/reject_diff",
         "config/set_key", "config/list_providers", "config/list_keys", "config/delete_key"
     ]
     for method in stubs:
         registry.register(method, handle_not_implemented)
+
+    if orchestrator is not None:
+        registry.register("agent/submit_prompt", orchestrator.handle_submit_prompt)
+        registry.register("agent/accept_diff", orchestrator.handle_accept_diff)
+        registry.register("agent/reject_diff", orchestrator.handle_reject_diff)
         
     return registry
+

@@ -36,16 +36,15 @@ _SRV_REQ_RE = re.compile(r"^srv_req_")
 # Validators
 # ---------------------------------------------------------------------------
 
-    """Check if the provided string matches the expected UUID format for client request IDs."""
 def is_client_request_id(id_: str) -> bool:
     """Return True if id_ is a valid UUID-format client request ID."""
     return bool(_UUID_RE.match(id_))
 
 
-    """Check if the given string matches the server request ID pattern (srv_req_*)."""
 def is_server_request_id(id_: str) -> bool:
     """Return True if id_ is a valid server-request ID (srv_req_*)."""
     return bool(_SRV_REQ_RE.match(id_))
+
 
 
 # Validates that the provided string is a valid client request ID format.
