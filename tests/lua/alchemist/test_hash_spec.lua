@@ -1,0 +1,16 @@
+local hash = require("alchemist.utils.hash")
+
+describe("hash utility", function()
+  it("should compute accurate SHA-256 for string matching python hashlib", function()
+    local h = hash.sha256("hello world\n")
+    assert.equals("a948904f2f0f479b8f8197694b30184b0d2ed1c1cd2a1ec0fb85d299a192a447", h)
+  end)
+
+  it("should compute SHA-256 for buffer content", function()
+    local buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "hello world" })
+    local h = hash.sha256_buffer(buf)
+    assert.equals("a948904f2f0f479b8f8197694b30184b0d2ed1c1cd2a1ec0fb85d299a192a447", h)
+    vim.api.nvim_buf_delete(buf, { force = true })
+  end)
+end)

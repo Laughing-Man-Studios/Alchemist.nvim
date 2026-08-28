@@ -1,0 +1,37 @@
+local state = require("alchemist.state")
+
+describe("state", function()
+  before_each(function()
+    state.reset()
+  end)
+
+  it("should generate valid uuid v4", function()
+    local id = state.uuid()
+    assert.truthy(id:match("^[0-9a-f]+%-[0-9a-f]+%-[0-9a-f]+%-[0-9a-f]+%-[0-9a-f]+$"))
+  end)
+
+  it("should initialize with default state", function()
+    local s = state.get()
+    assert.is_false(s.connected)
+    assert.truthy(s.client_id)
+    assert.is_nil(s.active_job)
+  end)
+
+  it("should update state synchronously", function()
+    state.update_sync({ connected = true, protocol_version = "1.0.0" })
+    local s = state.get()
+    assert.is_true(s.connected)
+    assert.equals("1.0.0", s.protocol_version)
+  end)
+
+  it("should track and remove pending requests", function()
+    state.add_pending("req-1", "agent/status")
+    local s = state.get()
+    assert.truthy(s.pending_requests["req-1"])
+    assert.equals("agent/status", s.pending_requests["req-1"].method)
+
+    state.remove_pending("req-1")
+    s = state.get()
+    assert.is_nil(s.pending_requests["req-1"])
+  end)
+end)
