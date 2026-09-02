@@ -141,4 +141,118 @@ Control what context the assistant sees using dedicated context commands:
 * `:AlchemistStart` / `:AlchemistStop` / `:AlchemistRestart` — Manually manages the background daemon process and socket connections.
 * `:AlchemistOpen` / `:AlchemistClose` — Opens or hides the streaming chat and output split panel.
 
+### 5. Debugging and Development
+
+Alchemist provides comprehensive debugging capabilities for both development and troubleshooting:
+
+#### Debug Configuration
+
+Configure debug settings in your Neovim configuration:
+
+```lua
+-- Enable basic debugging with default settings (debugpy on port 5678)
+vim.g.alchemist_debug = true
+
+-- Or use enhanced configuration for full control
+vim.g.alchemist_debug = {
+  enabled = true,           -- Enable debug mode
+  port = 5678,             -- Debug server port (default: 5678)
+  debugger = "debugpy",     -- Debugger: "debugpy", "pdb", or "ipdb"
+  wait_for_client = true,  -- Wait for debugger client connection
+  log_level = "info",      -- Log level: "debug", "info", "warning", "error"
+  lua_debug = false,       -- Enable Lua client debugging (future)
+}
+```
+
+#### Debug Commands
+
+* **`:AlchemistDebugStart [port]`** — Start the daemon in debug mode. Optionally specify a custom port.
+  ```vim
+  :AlchemistDebugStart        " Use default configuration
+  :AlchemistDebugStart 9999  " Start on custom port
+  ```
+
+* **`:AlchemistDebugStop`** — Stop the debug session and clean up configuration.
+
+* **`:AlchemistDebugStatus`** — Display current debug configuration, port, debugger type, and session status.
+
+* **`:AlchemistDebugLogs`** — Show debug-specific logs with timestamps, severity levels, and context.
+
+* **`:AlchemistDoctor`** — Now includes debug status information alongside regular diagnostics.
+
+#### VS Code Debug Adapter Protocol (DAP) Integration
+
+Alchemist automatically detects VS Code DAP sessions and configures itself accordingly:
+
+1. **Automatic Detection**: When running in VS Code with the Python extension, Alchemist detects the DAP environment variables and auto-configures debug mode.
+
+2. **Manual Configuration**: Create a `.vscode/launch.json` entry for debugging the Python daemon:
+
+```json
+{
+  "name": "Alchemist Daemon Debug",
+  "type": "python",
+  "request": "attach",
+  "connect": {
+    "host": "127.0.0.1",
+    "port": 5678
+  },
+  "justMyCode": false,
+  "subProcess": true
+}
+```
+
+3. **Debug Workflow**:
+   - Set breakpoints in the `alchemist/` Python package
+   - Run `:AlchemistDebugStart` in Neovim
+   - Start the VS Code debugger with your launch configuration
+   - Execute Alchemist commands to hit your breakpoints
+
+#### Debugging Alternative Debuggers
+
+Alchemist supports multiple Python debuggers:
+
+* **debugpy** (recommended): Default debugger with full DAP support
+* **pdb**: Standard Python debugger
+* **ipdb**: IPython-enhanced debugger
+
+Configure your preferred debugger:
+
+```lua
+vim.g.alchemist_debug = {
+  enabled = true,
+  debugger = "pdb",  -- or "ipdb"
+  wait_for_client = false
+}
+```
+
+#### Troubleshooting Tips
+
+1. **Connection Issues**: If the debugger isn't connecting:
+   - Verify the port is available: `lsof -i :5678`
+   - Check firewall settings
+   - Ensure your debugger client is configured for the same port
+
+2. **Daemon Not Starting**: Run `:AlchemistDebugLogs` to see detailed error messages.
+
+3. **Configuration Problems**: Use `:AlchemistDebugStatus` to verify your current debug configuration.
+
+4. **Performance Issues**: Reduce log level to "warning" or "error" for less verbose output:
+   ```lua
+   vim.g.alchemist_debug = {
+     enabled = true,
+     log_level = "warning"
+   }
+   ```
+
+#### Development Workflow
+
+For contributors working on Alchemist itself:
+
+1. **Lua Client Development**: Use standard Neovim debugging tools
+2. **Python Daemon Development**: Use `:AlchemistDebugStart` with your preferred debugger
+3. **Integration Testing**: Use `:AlchemistDebugStatus` to verify debug state
+4. **Error Analysis**: Use `:AlchemistDebugLogs` for detailed debugging information
+
+
 ---

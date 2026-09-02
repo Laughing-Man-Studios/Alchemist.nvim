@@ -7,6 +7,12 @@ local state = require("alchemist.state")
 function M.setup(opts)
   opts = opts or {}
 
+  -- Initialize debug module
+  local debug_mod = pcall(require, "alchemist.debug")
+  if debug_mod then
+    require("alchemist.debug").setup()
+  end
+
   require("alchemist.commands").register()
 
   vim.defer_fn(function()

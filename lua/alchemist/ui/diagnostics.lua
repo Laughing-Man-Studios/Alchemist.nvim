@@ -116,6 +116,18 @@ function M.show_doctor()
     "Daemon Script:  " .. require("alchemist.paths").daemon_script(),
     "",
   }
+  
+  -- Add debug status information
+  local debug_mod = pcall(require, "alchemist.debug")
+  if debug_mod then
+    local debug = require("alchemist.debug")
+    local debug_status = debug.get_debug_status()
+    table.insert(lines, "Debug Enabled:   " .. (debug_status.enabled and "Yes" or "No"))
+    table.insert(lines, "Debug Active:    " .. (debug_status.active and "Yes" or "No"))
+    table.insert(lines, "Debug Port:      " .. debug_status.port)
+    table.insert(lines, "Debugger:        " .. debug_status.debugger)
+    table.insert(lines, "")
+  end
 
   if s.last_error then
     table.insert(lines, "Last Error: " .. (s.last_error.code or s.last_error.message or "unknown"))
