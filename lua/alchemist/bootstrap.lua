@@ -141,7 +141,7 @@ function M.spawn_daemon(callback)
 	local cmd = { "uv", "run" }
 
 	-- Inject debug command if debug mode is enabled
-	local debug_args = get_debug_command_args()
+	local debug_args = M.get_debug_command_args()
 	if debug_args then
 		vim.list_extend(cmd, debug_args)
 		vim.list_extend(cmd, { "-m", "alchemist.daemon.main" })
