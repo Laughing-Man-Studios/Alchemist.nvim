@@ -164,19 +164,19 @@ vim.g.alchemist_debug = {
 }
 ```
 
-#### Debug Commands
+#### Python Debug Commands
 
-* **`:AlchemistDebugStart [port]`** — Start the daemon in debug mode. Optionally specify a custom port.
+* **`:AlchemistPythonDebugStart [port]`** — Start the Python daemon in debug mode. Optionally specify a custom port.
   ```vim
-  :AlchemistDebugStart        " Use default configuration
-  :AlchemistDebugStart 9999  " Start on custom port
+  :AlchemistPythonDebugStart        " Use default configuration
+  :AlchemistPythonDebugStart 9999  " Start on custom port
   ```
 
-* **`:AlchemistDebugStop`** — Stop the debug session and clean up configuration.
+* **`:AlchemistPythonDebugStop`** — Stop the Python debug session and clean up configuration.
 
-* **`:AlchemistDebugStatus`** — Display current debug configuration, port, debugger type, and session status.
+* **`:AlchemistPythonDebugStatus`** — Display current Python debug configuration, port, debugger type, and session status.
 
-* **`:AlchemistDebugLogs`** — Show debug-specific logs with timestamps, severity levels, and context.
+* **`:AlchemistPythonDebugLogs`** — Show Python debug-specific logs with timestamps, severity levels, and context.
 
 * **`:AlchemistDoctor`** — Now includes debug status information alongside regular diagnostics.
 

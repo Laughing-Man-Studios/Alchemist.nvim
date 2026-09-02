@@ -99,41 +99,41 @@ function M.register()
     diag.show_logs()
   end, { desc = "Show Alchemist operational log" })
 
-  -- === Debug Commands ===
+  -- === Python Debug Commands ===
 
-  cmd("AlchemistDebugStart", function(opts)
+  cmd("AlchemistPythonDebugStart", function(opts)
     local debug_mod = require("alchemist.debug")
     local port = opts.args and tonumber(opts.args) or nil
     
     debug_mod.start_debug(port, function(err)
       if err then
-        vim.notify("[Alchemist] Debug start failed: " .. err, vim.log.levels.ERROR)
+        vim.notify("[Alchemist] Python debug start failed: " .. err, vim.log.levels.ERROR)
       else
-        vim.notify("[Alchemist] Debug mode started on port " .. (port or debug_mod.get_port()), vim.log.levels.INFO)
+        vim.notify("[Alchemist] Python debug mode started on port " .. (port or debug_mod.get_port()), vim.log.levels.INFO)
       end
     end)
-  end, { nargs = "?", desc = "Start Alchemist daemon in debug mode [port]" })
+  end, { nargs = "?", desc = "Start Alchemist Python daemon in debug mode [port]" })
 
-  cmd("AlchemistDebugStop", function()
+  cmd("AlchemistPythonDebugStop", function()
     local debug_mod = require("alchemist.debug")
     debug_mod.stop_debug(function(err)
       if err then
-        vim.notify("[Alchemist] Debug stop failed: " .. err, vim.log.levels.ERROR)
+        vim.notify("[Alchemist] Python debug stop failed: " .. err, vim.log.levels.ERROR)
       else
-        vim.notify("[Alchemist] Debug mode stopped", vim.log.levels.INFO)
+        vim.notify("[Alchemist] Python debug mode stopped", vim.log.levels.INFO)
       end
     end)
-  end, { desc = "Stop Alchemist debug session" })
+  end, { desc = "Stop Alchemist Python debug session" })
 
-  cmd("AlchemistDebugStatus", function()
+  cmd("AlchemistPythonDebugStatus", function()
     local debug_mod = require("alchemist.debug")
     debug_mod.show_debug_status()
-  end, { desc = "Show Alchemist debug configuration and status" })
+  end, { desc = "Show Alchemist Python debug configuration and status" })
 
-  cmd("AlchemistDebugLogs", function()
+  cmd("AlchemistPythonDebugLogs", function()
     local debug_mod = require("alchemist.debug")
     debug_mod.show_debug_logs()
-  end, { desc = "Show Alchemist debug-specific logs" })
+  end, { desc = "Show Alchemist Python debug-specific logs" })
 
   cmd("AlchemistStatus", function()
     if not require_connected() then return end
@@ -329,8 +329,8 @@ function M.unregister()
     "AlchemistMapRefresh", "AlchemistRun", "AlchemistTest",
     "AlchemistLint", "AlchemistCommit", "AlchemistModels",
     "AlchemistSettings",
-    "AlchemistDebugStart", "AlchemistDebugStop", 
-    "AlchemistDebugStatus", "AlchemistDebugLogs",
+    "AlchemistPythonDebugStart", "AlchemistPythonDebugStop", 
+    "AlchemistPythonDebugStatus", "AlchemistPythonDebugLogs",
   }
   for _, name in ipairs(commands) do
     pcall(vim.api.nvim_del_user_command, name)
