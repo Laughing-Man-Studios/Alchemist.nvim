@@ -180,39 +180,11 @@ vim.g.alchemist_debug = {
 
 * **`:AlchemistDoctor`** — Now includes debug status information alongside regular diagnostics.
 
-#### VS Code Debug Adapter Protocol (DAP) Integration
-
-Alchemist automatically detects VS Code DAP sessions and configures itself accordingly:
-
-1. **Automatic Detection**: When running in VS Code with the Python extension, Alchemist detects the DAP environment variables and auto-configures debug mode.
-
-2. **Manual Configuration**: Create a `.vscode/launch.json` entry for debugging the Python daemon:
-
-```json
-{
-  "name": "Alchemist Daemon Debug",
-  "type": "python",
-  "request": "attach",
-  "connect": {
-    "host": "127.0.0.1",
-    "port": 5678
-  },
-  "justMyCode": false,
-  "subProcess": true
-}
-```
-
-3. **Debug Workflow**:
-   - Set breakpoints in the `alchemist/` Python package
-   - Run `:AlchemistDebugStart` in Neovim
-   - Start the VS Code debugger with your launch configuration
-   - Execute Alchemist commands to hit your breakpoints
-
 #### Debugging Alternative Debuggers
 
 Alchemist supports multiple Python debuggers:
 
-* **debugpy** (recommended): Default debugger with full DAP support
+* **debugpy** (recommended): Default debugger
 * **pdb**: Standard Python debugger
 * **ipdb**: IPython-enhanced debugger
 

@@ -313,57 +313,10 @@ function M.show_debug_logs()
   diag._show_scratch_buffer("alchemist-debug-logs", lines)
 end
 
---- Check if we're in a VS Code DAP session
----@return boolean
-function M.is_dap_session_active()
-  -- Check for common DAP environment variables or processes
-  local dap_active = false
-  
-  -- Check if VS Code's debug adapter is running
-  if vim.env.DAP_SERVER_PORT or vim.env.VSCODE_DEBUG_PORT then
-    dap_active = true
-  end
-  
-  -- Check for nvim-dap plugin
-  if pcall(require, "dap") then
-    local dap = require("dap")
-    if dap.session and dap.session() then
-      dap_active = true
-    end
-  end
-  
-  return dap_active
-end
-
---- Auto-configure for VS Code DAP integration
-function M.configure_vscode_dap()
-  -- Check if we're in VS Code with DAP
-  if not M.is_dap_session_active() then
-    return
-  end
-  
-  -- Auto-enable debug mode with VS Code default port
-  if not M.is_enabled() then
-    vim.g.alchemist_debug = {
-      enabled = true,
-      port = 5678, -- VS Code default debugpy port
-      wait_for_client = true,
-      debugger = "debugpy",
-      log_level = "info",
-      lua_debug = false,
-    }
-    
-    M.add_debug_log("info", "Auto-configured for VS Code DAP")
-  end
-end
-
 --- Setup debug module
 function M.setup()
   -- Add debug status to doctor output
   -- This will be integrated into the main doctor function
-  
-  -- Auto-configure for DAP sessions
-  M.configure_vscode_dap()
 end
 
 return M
