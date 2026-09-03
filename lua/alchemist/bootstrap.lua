@@ -78,7 +78,7 @@ function M.acquire_lock()
 	local lock_path = paths.lock_path()
 	paths.ensure_dir(vim.fn.fnamemodify(lock_path, ":h"), tonumber("700", 8))
 
-	local fd = ffi.C.open(lock_path, open_flags(), tonumber("600", 8))
+	local fd = ffi.C.open(lock_path, open_flags(), ffi.cast("int", tonumber("600", 8)))
 	if fd < 0 then
 		return false
 	end
@@ -113,6 +113,11 @@ function M.check_socket(callback)
 	end
 
 	local pipe = uv.new_pipe(false)
+	if not pipe then
+		callback(false)
+		return
+	end
+
 	pipe:connect(socket_path, function(err)
 		if err then
 			if pipe and not pipe:is_closing() then
@@ -137,17 +142,15 @@ end
 --- Spawn the daemon process via `uv run`
 ---@param callback fun(err: string|nil)
 function M.spawn_daemon(callback)
-	local daemon_script = paths.daemon_script()
-	local cmd = { "uv", "run" }
+	local cmd = { "uv", "run", "python" }
 
 	-- Inject debug command if debug mode is enabled
 	local debug_args = M.get_debug_command_args()
 	if debug_args then
 		vim.list_extend(cmd, debug_args)
-		vim.list_extend(cmd, { "-m", "alchemist.daemon.main" })
-	else
-		table.insert(cmd, daemon_script)
 	end
+
+	vim.list_extend(cmd, { "-m", "alchemist.daemon.main" })
 
 	local job_id = vim.fn.jobstart(cmd, {
 		detach = true,
@@ -156,7 +159,6 @@ function M.spawn_daemon(callback)
 		on_stderr = function(_, data)
 			if data and #data > 0 then
 				local msg = table.concat(data, "\n")
-				vim.notify("[Alchemist Daemon] " .. msg, vim.log.levels.DEBUG)
 				if msg:match("ERROR") or msg:match("FATAL") then
 					vim.schedule(function()
 						vim.notify("[Alchemist Daemon] " .. msg, vim.log.levels.WARN)
@@ -195,6 +197,10 @@ end
 function M.wait_for_socket(max_retries, interval_ms, callback)
 	local attempts = 0
 	local timer = uv.new_timer()
+	if not timer then
+		callback(false)
+		return
+	end
 
 	timer:start(0, interval_ms, function()
 		attempts = attempts + 1
@@ -369,7 +375,7 @@ function M._register_all_handlers()
 			end)
 		end,
 
-		["ui/clear_prompt"] = function(_params)
+		["ui/clear_prompt"] = function()
 			-- Clear any active prompt UI
 		end,
 
@@ -415,7 +421,7 @@ function M._register_all_handlers()
 			end)
 		end,
 
-		["daemon/exhausted"] = function(_params)
+		["daemon/exhausted"] = function()
 			state.update({
 				last_error = {
 					code = "ALL_KEYS_EXHAUSTED",
