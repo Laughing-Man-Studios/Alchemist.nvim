@@ -17,11 +17,13 @@ class IpcServer:
     def __init__(
         self, 
         lifecycle: LifecycleManager,
-        dispatcher_callback: Callable[[dict[str, Any]], Coroutine[Any, Any, dict[str, Any] | None]]
+        dispatcher_callback: Callable[[dict[str, Any]], Coroutine[Any, Any, dict[str, Any] | None]],
+        unregister_client: Callable[[str], None] | None = None,
     ):
         self.lifecycle = LifecycleManager
         self.lifecycle_instance = lifecycle
         self.dispatcher_callback = dispatcher_callback
+        self.unregister_client = unregister_client
         self.socket_path = get_socket_path()
         self._server: asyncio.Server | None = None
         self._active_connections: set[asyncio.Task] = set()
@@ -70,6 +72,7 @@ class IpcServer:
         """Handle an individual client connection."""
         self.lifecycle_instance.client_connected()
         peer = writer.get_extra_info('peername') or "unknown"
+        client_ids: set[str] = set()
         logger.debug(f"Client connected from {peer}")
         
         # Wrap the connection handling to manage the active connection set
@@ -117,6 +120,11 @@ class IpcServer:
 
                 # Dispatch
                 try:
+                    if payload.get("method") == "client/initialize":
+                        client_id = payload.get("params", {}).get("client_id")
+                        if client_id:
+                            client_ids.add(str(client_id))
+                    payload["_connection_writer"] = writer
                     response = await self.dispatcher_callback(payload)
                     if response is not None:
                         # Serialize and send response
@@ -144,6 +152,9 @@ class IpcServer:
             except Exception:
                 pass
             self.lifecycle_instance.client_disconnected()
+            if self.unregister_client:
+                for client_id in client_ids:
+                    self.unregister_client(client_id)
             logger.debug(f"Client connection closed {peer}")
 
     def _make_json_rpc_error(self, req_id: Any, code: int, message: str, data: Any = None) -> str:

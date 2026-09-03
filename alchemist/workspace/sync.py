@@ -31,6 +31,7 @@ class PreFlightSync:
     async def sync_buffers(
         shadow_root: Path,
         buffers: List["BufferSnapshot"],
+        project_root: Path | None = None,
     ) -> Dict[str, str]:
         """Write buffer contents to shadow workspace and return base hashes.
 
@@ -48,7 +49,7 @@ class PreFlightSync:
         base_hashes: Dict[str, str] = {}
 
         for buf in buffers:
-            rel_path = buf.path
+            rel_path = PreFlightSync._relative_path(buf.path, project_root)
             content = buf.content
             content_hash = buf.sha256
 
@@ -115,3 +116,22 @@ class PreFlightSync:
         """Write content to file, creating parent directories as needed."""
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding="utf-8")
+
+    @staticmethod
+    def _relative_path(path: str, project_root: Path | None) -> str:
+        """Accept only a project-contained path and return its safe relative form."""
+        candidate = Path(path)
+        try:
+            if candidate.is_absolute():
+                if project_root is None:
+                    raise ValueError("absolute paths require a project root")
+                relative = candidate.resolve().relative_to(project_root.resolve())
+            else:
+                relative = candidate
+            if any(part == ".." for part in relative.parts) or relative.is_absolute():
+                raise ValueError("path traversal is not allowed")
+            return relative.as_posix()
+        except (ValueError, OSError) as exc:
+            raise ShadowSyncFailedError(
+                "Buffer path is outside the project", hint="Use a project-relative buffer path."
+            ) from exc

@@ -19,6 +19,11 @@ class ThreadIsolatedBridge:
         """Run a blocking function in the background thread."""
         return self._loop.run_in_executor(self._thread_pool, lambda: func(*args, **kwargs))
 
+    @property
+    def loop(self) -> asyncio.AbstractEventLoop:
+        """The daemon loop used to marshal worker-thread notifications."""
+        return self._loop
+
     def request_confirmation_sync(
         self, 
         session_id: str, 

@@ -17,7 +17,7 @@ class DiffGenerator:
     """
 
     @staticmethod
-    async def generate_diff(shadow_root: Path) -> str:
+    async def generate_diff(shadow_root: Path, base_revision: str | None = None) -> str:
         """Generate a unified diff from git diff HEAD~1.
 
         Returns:
@@ -27,7 +27,7 @@ class DiffGenerator:
             RuntimeError: If git diff command fails.
         """
         proc = await asyncio.create_subprocess_exec(
-            "git", "diff", "HEAD~1",
+            "git", "diff", base_revision or "HEAD~1", "HEAD",
             cwd=shadow_root,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -48,14 +48,14 @@ class DiffGenerator:
         return diff_text
 
     @staticmethod
-    async def get_changed_files(shadow_root: Path) -> List[str]:
+    async def get_changed_files(shadow_root: Path, base_revision: str | None = None) -> List[str]:
         """Extract list of changed files from git diff --name-only HEAD~1.
 
         Returns:
             List of relative file paths that were changed.
         """
         proc = await asyncio.create_subprocess_exec(
-            "git", "diff", "--name-only", "HEAD~1",
+            "git", "diff", "--name-only", base_revision or "HEAD~1", "HEAD",
             cwd=shadow_root,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -74,11 +74,11 @@ class DiffGenerator:
         ]
 
     @staticmethod
-    async def has_changes(shadow_root: Path) -> bool:
+    async def has_changes(shadow_root: Path, base_revision: str | None = None) -> bool:
         """Quick check whether the shadow workspace has uncommitted or
         committed changes relative to the pre-flight sync."""
         proc = await asyncio.create_subprocess_exec(
-            "git", "diff", "--quiet", "HEAD~1",
+            "git", "diff", "--quiet", base_revision or "HEAD~1", "HEAD",
             cwd=shadow_root,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -86,4 +86,3 @@ class DiffGenerator:
         await proc.communicate()
         # Exit code 0 = no diff, 1 = differences exist
         return proc.returncode == 1
-

@@ -1,8 +1,10 @@
-"""LiteLLM interception layer to track token usage, inject keys, and handle rotation."""
+"""Synchronous, request-scoped LiteLLM interception for Aider."""
 
 import logging
-from typing import Any, Dict, List, Optional
+from contextlib import contextmanager
+from typing import Any, Callable, Dict, Iterator, List, Optional
 import litellm
+from pydantic import SecretStr
 
 logger = logging.getLogger(__name__)
 
@@ -18,9 +20,33 @@ class LiteLLMInterceptor:
         self.post_request_hooks = []
         self.error_hooks = []
 
-    def _get_api_key(self, provider: str, model: str) -> Optional[str]:
-        """Stub: retrieve API key from vault."""
-        return None
+    @contextmanager
+    def scoped_completion(self, api_key: SecretStr) -> Iterator[None]:
+        """Patch only the blocking completion Aider uses, then always restore it."""
+        original = litellm.completion
+
+        def completion(*args: Any, **kwargs: Any) -> Any:
+            kwargs["api_key"] = api_key.get_secret_value()
+            model = kwargs.get("model") or (args[0] if args else "unknown")
+            provider = str(model).split("/", 1)[0]
+            for hook in self.pre_request_hooks:
+                hook(provider, model, kwargs)
+            try:
+                response = (self._fake_provider.completion(*args, **kwargs)
+                            if self._fake_provider else original(*args, **kwargs))
+                for hook in self.post_request_hooks:
+                    hook(provider, model, response)
+                return response
+            except Exception as exc:
+                for hook in self.error_hooks:
+                    hook(provider, model, exc)
+                raise
+
+        litellm.completion = completion
+        try:
+            yield
+        finally:
+            litellm.completion = original
 
     async def acompletion(self, model: str, messages: List[Dict[str, str]], **kwargs: Any) -> Any:
         """Wrap litellm.acompletion with interception logic."""

@@ -23,6 +23,7 @@ class ShadowWorkspace:
     initialized: bool = False
     pending_diff: Optional[str] = None
     base_hashes: Dict[str, str] = field(default_factory=dict)
+    base_revision: Optional[str] = None
 
 
 class ShadowManager:

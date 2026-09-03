@@ -7,7 +7,7 @@ from typing import Any, Dict
 from alchemist.daemon.active_job import ActiveJobTracker
 from alchemist.daemon.broadcaster import Broadcaster
 from alchemist.engine.interface import AssistantEngine, PromptContext
-from alchemist.errors import ShadowSyncFailedError
+from alchemist.errors import NoKeysConfiguredError, ShadowSyncFailedError
 from alchemist.protocol.models.client_to_daemon import (
     AgentAcceptDiffParams,
     AgentRejectDiffParams,
@@ -51,6 +51,10 @@ class PromptOrchestrator:
         session_id = str(validated.session_id)
         project_id = str(validated.project_id)
 
+        can_submit = getattr(self.engine, "can_submit", None)
+        if can_submit is not None and not can_submit(validated.mode):
+            raise NoKeysConfiguredError("No API key is configured for this prompt mode.")
+
         # Acquire global job lock (raises AgentBusyError if busy)
         self.job_tracker.start_job(
             session_id=session_id,
@@ -86,6 +90,9 @@ class PromptOrchestrator:
 
         workspace = self.shadow_manager.get_workspace(project_id)
         await RejectionFlow.reject(workspace)
+        reject = getattr(self.engine, "reject", None)
+        if reject:
+            await reject(session_id)
         self.job_tracker.clear_job(session_id)
 
         return {"status": "reverted"}
@@ -119,41 +126,43 @@ class PromptOrchestrator:
 
             # 3. Pre-flight sync: write buffers to shadow workspace
             base_hashes = await PreFlightSync.sync_buffers(
-                workspace.shadow_root, params.buffers
+                workspace.shadow_root, params.buffers, workspace.project_path
             )
             await PreFlightSync.commit_sync(workspace.shadow_root)
+            workspace.base_revision = await self._git_revision(workspace.shadow_root)
 
             # Store base_hashes on workspace for later verification
             workspace.base_hashes = base_hashes
 
-            # 4. Notify client: engine executing
-            self.broadcaster.notify_client(client_id, "ui/status_update", {
-                "client_id": client_id,
-                "session_id": session_id,
-                "project_id": project_id,
-                "status": "processing",
-                "model": "",
-                "provider": "",
-                "key_index": 0,
-                "phase": "agent_execution",
-            })
-
-            # 5. Execute engine in shadow workspace
+            # 4. Execute engine in shadow workspace. The engine emits its
+            # provider/model-specific processing status before calling Aider.
             context = PromptContext(
                 session_id=session_id,
+                client_id=client_id,
+                project_id=project_id,
                 prompt=params.prompt,
                 workspace_root=workspace.shadow_root,
                 project_path=params.project_path,
-                active_files=params.active_files,
+                active_files=[PreFlightSync._relative_path(path, workspace.project_path)
+                              for path in params.active_files],
                 mode=params.mode,
             )
             await self.engine.submit_prompt(context)
 
-            # 6. Generate diff
-            diff_text = await DiffGenerator.generate_diff(workspace.shadow_root)
+            # 5. Generate diff
+            diff_text = await DiffGenerator.generate_diff(workspace.shadow_root, workspace.base_revision)
             changed_files = await DiffGenerator.get_changed_files(
-                workspace.shadow_root
+                workspace.shadow_root, workspace.base_revision
             )
+
+            if not diff_text.strip():
+                self.job_tracker.clear_job(session_id)
+                self.broadcaster.notify_client(client_id, "ui/status_update", {
+                    "client_id": client_id, "session_id": session_id, "project_id": project_id,
+                    "status": "idle", "model": "", "provider": "", "key_index": 0,
+                    "phase": "no_changes",
+                })
+                return
 
             # Store pending diff on workspace
             workspace.pending_diff = diff_text
@@ -177,11 +186,22 @@ class PromptOrchestrator:
                 "hint": "Try restarting the daemon.",
             })
         except Exception as e:
-            logger.exception("Prompt execution failed: %s", e)
+            logger.exception("Prompt execution failed")
             self.job_tracker.clear_job(session_id)
             self.broadcaster.notify_client(client_id, "daemon/error", {
                 "code": "AIDER_INTERNAL_ERROR",
-                "message": str(e),
+                "message": "The assistant could not complete the request.",
                 "retryable": False,
                 "hint": "An unexpected error occurred during agent execution.",
             })
+
+    @staticmethod
+    async def _git_revision(root) -> str:
+        proc = await asyncio.create_subprocess_exec(
+            "git", "rev-parse", "HEAD", cwd=root, stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        out, err = await proc.communicate()
+        if proc.returncode:
+            raise RuntimeError("Unable to determine shadow workspace revision")
+        return out.decode().strip()
