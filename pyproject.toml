@@ -11,8 +11,8 @@ requires-python = ">=3.12"
 license = {text = "MIT"}
 dependencies = [
     "pydantic>=2.0",
-    "aider-chat>=0.72.0",
-    "litellm>=1.0.0",
+    "aider-chat==0.86.2",
+    "litellm==1.81.10",
     "aiosqlite>=0.20.0",
     "cryptography>=44.0.0"
 ]

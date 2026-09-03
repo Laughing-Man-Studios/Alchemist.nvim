@@ -10,11 +10,13 @@ from typing import Any, Dict, List, Optional, Union
 class PromptContext:
     """Structured context passed to the engine for prompt execution."""
     session_id: str
+    client_id: str
     prompt: str
     workspace_root: Path
     project_path: str
     active_files: List[str] = field(default_factory=list)
     mode: str = "code"
+    project_id: str = ""
 
 
 class AssistantEngine(abc.ABC):
@@ -55,4 +57,3 @@ class StubAssistantEngine(AssistantEngine):
 
     async def reset(self, session_id: str) -> None:
         pass
-

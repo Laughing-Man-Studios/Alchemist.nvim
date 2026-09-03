@@ -1,8 +1,8 @@
 # /// script
 # requires-python = "==3.12.*"
 # dependencies = [
-#     "aider-chat>=0.72.0",
-#     "litellm>=1.0.0",
+#     "aider-chat==0.86.2",
+#     "litellm==1.81.10",
 #     "pydantic>=2.0",
 #     "aiosqlite>=0.20.0",
 #     "cryptography>=44.0.0",
@@ -22,7 +22,9 @@ from alchemist.daemon.lifecycle import LifecycleManager
 from alchemist.daemon.lock import DaemonLock, LockAcquisitionError
 from alchemist.daemon.paths import ensure_config_dir, ensure_runtime_dir, get_socket_path
 from alchemist.daemon.server import IpcServer
-from alchemist.engine.interface import StubAssistantEngine
+from alchemist.engine.aider_engine import AiderEngine
+from alchemist.engine.bridge import ThreadIsolatedBridge
+from alchemist.state.vault import LocalVault
 from alchemist.workspace.manager import ShadowManager
 from alchemist.workspace.orchestrator import PromptOrchestrator
 
@@ -54,8 +56,14 @@ async def async_main():
         shadow_manager = ShadowManager()
         lifecycle.register_cleanup_callback(shadow_manager.cleanup_all)
 
-        engine = StubAssistantEngine()
         broadcaster = Broadcaster()
+        vault = LocalVault()
+        engine = AiderEngine(
+            vault=vault,
+            broadcaster=broadcaster,
+            bridge=ThreadIsolatedBridge(asyncio.get_running_loop()),
+        )
+        lifecycle.register_cleanup_callback(engine.shutdown)
         job_tracker = ActiveJobTracker()
 
         orchestrator = PromptOrchestrator(
@@ -65,9 +73,12 @@ async def async_main():
             broadcaster=broadcaster,
         )
 
-        registry = build_default_registry(lifecycle, get_socket_path(), orchestrator=orchestrator)
+        registry = build_default_registry(
+            lifecycle, get_socket_path(), orchestrator=orchestrator,
+            vault=vault, broadcaster=broadcaster,
+        )
         dispatcher = RpcDispatcher(registry)
-        server = IpcServer(lifecycle, dispatcher.dispatch)
+        server = IpcServer(lifecycle, dispatcher.dispatch, broadcaster.unregister_client)
         
         # Register server shutdown with lifecycle
         lifecycle.register_cleanup_callback(server.stop)

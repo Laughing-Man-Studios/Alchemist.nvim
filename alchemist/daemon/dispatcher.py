@@ -94,22 +94,29 @@ class RpcDispatcher:
 
 
 def build_default_registry(
-    lifecycle, socket_path, orchestrator=None
+    lifecycle, socket_path, orchestrator=None, vault=None, broadcaster=None
 ) -> MethodRegistry:
     """Build a method registry populated with handlers and stubs."""
     registry = MethodRegistry()
     
     async def handle_client_initialize(params: dict) -> dict:
+        from alchemist.protocol.models.client_to_daemon import ClientInitializeParams
+        initialized = ClientInitializeParams(**params)
         client_proto = params.get("protocol_version")
         if client_proto != PROTOCOL_VERSION:
             raise DaemonVersionMismatchError(
                 f"Client protocol version {client_proto} doesn't match daemon protocol version {PROTOCOL_VERSION}."
             )
+        client_id = str(initialized.client_id)
+        writer = params.get("_connection_writer")
+        if broadcaster is not None and writer is not None:
+            broadcaster.register_client(client_id, writer)
+        keys_configured = bool(vault and any(vault.list_keys().values()))
         return {
             "daemon_version": DAEMON_VERSION,
             "protocol_version": PROTOCOL_VERSION,
             "aider_version": AIDER_VERSION,
-            "status": "ready"
+            "status": "ready" if keys_configured else "no_keys_configured"
         }
         
     async def handle_daemon_health(params: dict) -> dict:
@@ -117,8 +124,7 @@ def build_default_registry(
             "liveness": "ok",
             "socket_path": str(socket_path),
             "active_clients": lifecycle.active_clients,
-            # We stub out the keys_configured and uptime for Phase 2
-            "keys_configured": False, 
+            "keys_configured": bool(vault and any(vault.list_keys().values())),
             "uptime_seconds": 0 
         }
         
@@ -136,6 +142,26 @@ def build_default_registry(
     registry.register("daemon/health", handle_daemon_health)
     registry.register("daemon/version", handle_daemon_version)
 
+    async def handle_set_key(params: dict) -> dict:
+        from alchemist.protocol.models.client_to_daemon import ConfigSetKeyParams
+        if vault is None:
+            raise RuntimeError("vault unavailable")
+        value = ConfigSetKeyParams(**params)
+        return {"provider": value.provider, "masked_key": vault.set_key(value.provider, value.key)}
+
+    async def handle_list_providers(params: dict) -> dict:
+        return {"providers": vault.list_providers() if vault else []}
+
+    async def handle_list_keys(params: dict) -> dict:
+        return {"keys": vault.list_keys() if vault else {}}
+
+    async def handle_delete_key(params: dict) -> dict:
+        from alchemist.protocol.models.client_to_daemon import ConfigDeleteKeyParams
+        if vault is None:
+            raise RuntimeError("vault unavailable")
+        value = ConfigDeleteKeyParams(**params)
+        return {"deleted": vault.delete_key(value.provider, value.key_index)}
+
     # Stubs
     stubs = [
         "agent/submit_prompt", "agent/cancel", "agent/status", "agent/list_sessions",
@@ -147,10 +173,14 @@ def build_default_registry(
     for method in stubs:
         registry.register(method, handle_not_implemented)
 
+    registry.register("config/set_key", handle_set_key)
+    registry.register("config/list_providers", handle_list_providers)
+    registry.register("config/list_keys", handle_list_keys)
+    registry.register("config/delete_key", handle_delete_key)
+
     if orchestrator is not None:
         registry.register("agent/submit_prompt", orchestrator.handle_submit_prompt)
         registry.register("agent/accept_diff", orchestrator.handle_accept_diff)
         registry.register("agent/reject_diff", orchestrator.handle_reject_diff)
         
     return registry
-

@@ -28,6 +28,7 @@ class AcceptanceFlow:
         """
         workspace.pending_diff = None
         workspace.base_hashes.clear()
+        workspace.base_revision = None
 
         logger.info(
             "Diff accepted for project %s. Shadow baseline updated.",
@@ -52,7 +53,7 @@ class RejectionFlow:
         shadow_root = workspace.shadow_root
 
         proc = await asyncio.create_subprocess_exec(
-            "git", "reset", "--hard", "HEAD~1",
+            "git", "reset", "--hard", workspace.base_revision or "HEAD~1",
             cwd=shadow_root,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -67,6 +68,7 @@ class RejectionFlow:
 
         workspace.pending_diff = None
         workspace.base_hashes.clear()
+        workspace.base_revision = None
 
         logger.info(
             "Diff rejected for project %s. Shadow workspace rewound.",
