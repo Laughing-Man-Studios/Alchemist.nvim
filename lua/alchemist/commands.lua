@@ -99,6 +99,42 @@ function M.register()
     diag.show_logs()
   end, { desc = "Show Alchemist operational log" })
 
+  -- === Python Debug Commands ===
+
+  cmd("AlchemistPythonDebugStart", function(opts)
+    local debug_mod = require("alchemist.debug")
+    local port = opts.args and tonumber(opts.args) or nil
+    
+    debug_mod.start_debug(port, function(err)
+      if err then
+        vim.notify("[Alchemist] Python debug start failed: " .. err, vim.log.levels.ERROR)
+      else
+        vim.notify("[Alchemist] Python debug mode started on port " .. (port or debug_mod.get_port()), vim.log.levels.INFO)
+      end
+    end)
+  end, { nargs = "?", desc = "Start Alchemist Python daemon in debug mode [port]" })
+
+  cmd("AlchemistPythonDebugStop", function()
+    local debug_mod = require("alchemist.debug")
+    debug_mod.stop_debug(function(err)
+      if err then
+        vim.notify("[Alchemist] Python debug stop failed: " .. err, vim.log.levels.ERROR)
+      else
+        vim.notify("[Alchemist] Python debug mode stopped", vim.log.levels.INFO)
+      end
+    end)
+  end, { desc = "Stop Alchemist Python debug session" })
+
+  cmd("AlchemistPythonDebugStatus", function()
+    local debug_mod = require("alchemist.debug")
+    debug_mod.show_debug_status()
+  end, { desc = "Show Alchemist Python debug configuration and status" })
+
+  cmd("AlchemistPythonDebugLogs", function()
+    local debug_mod = require("alchemist.debug")
+    debug_mod.show_debug_logs()
+  end, { desc = "Show Alchemist Python debug-specific logs" })
+
   cmd("AlchemistStatus", function()
     if not require_connected() then return end
     methods.agent_status(function(err, result)
@@ -293,6 +329,8 @@ function M.unregister()
     "AlchemistMapRefresh", "AlchemistRun", "AlchemistTest",
     "AlchemistLint", "AlchemistCommit", "AlchemistModels",
     "AlchemistSettings",
+    "AlchemistPythonDebugStart", "AlchemistPythonDebugStop", 
+    "AlchemistPythonDebugStatus", "AlchemistPythonDebugLogs",
   }
   for _, name in ipairs(commands) do
     pcall(vim.api.nvim_del_user_command, name)
