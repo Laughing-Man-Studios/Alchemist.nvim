@@ -156,6 +156,7 @@ function M.spawn_daemon(callback)
 		on_stderr = function(_, data)
 			if data and #data > 0 then
 				local msg = table.concat(data, "\n")
+				vim.notify("[Alchemist Daemon] " .. msg, vim.log.levels.DEBUG)
 				if msg:match("ERROR") or msg:match("FATAL") then
 					vim.schedule(function()
 						vim.notify("[Alchemist Daemon] " .. msg, vim.log.levels.WARN)
@@ -177,7 +178,13 @@ function M.spawn_daemon(callback)
 		return
 	end
 
-	state.update({ daemon_pid = vim.fn.jobpid(job_id) })
+	local ok, pid = pcall(vim.fn.jobpid, job_id)
+	if ok and pid then
+		state.update({ daemon_pid = pid })
+	else
+		callback("Failed to retrieve daemon PID (process exited prematurely)")
+		return
+	end
 	callback(nil)
 end
 
