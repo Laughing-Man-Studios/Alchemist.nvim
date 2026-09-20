@@ -162,25 +162,45 @@ def build_default_registry(
         value = ConfigDeleteKeyParams(**params)
         return {"deleted": vault.delete_key(value.provider, value.key_index)}
 
-    # Stubs
-    stubs = [
-        "agent/submit_prompt", "agent/cancel", "agent/status", "agent/list_sessions",
-        "agent/reset", "agent/clear", "agent/add_file", "agent/drop_file", "agent/list_files",
-        "agent/read_only", "agent/repo_map", "agent/run", "agent/test", "agent/lint",
-        "agent/accept_diff", "agent/reject_diff",
-        "config/set_key", "config/list_providers", "config/list_keys", "config/delete_key"
-    ]
-    for method in stubs:
-        registry.register(method, handle_not_implemented)
-
+    # Config handlers (always available)
     registry.register("config/set_key", handle_set_key)
     registry.register("config/list_providers", handle_list_providers)
     registry.register("config/list_keys", handle_list_keys)
     registry.register("config/delete_key", handle_delete_key)
 
+    # Agent handlers (require orchestrator)
     if orchestrator is not None:
+        # Prompt lifecycle
         registry.register("agent/submit_prompt", orchestrator.handle_submit_prompt)
         registry.register("agent/accept_diff", orchestrator.handle_accept_diff)
         registry.register("agent/reject_diff", orchestrator.handle_reject_diff)
-        
+        # Agent lifecycle
+        registry.register("agent/cancel", orchestrator.handle_cancel)
+        registry.register("agent/status", orchestrator.handle_status)
+        registry.register("agent/reset", orchestrator.handle_reset)
+        registry.register("agent/clear", orchestrator.handle_clear)
+        registry.register("agent/list_sessions", orchestrator.handle_list_sessions)
+        # File/context management
+        registry.register("agent/add_file", orchestrator.handle_add_file)
+        registry.register("agent/drop_file", orchestrator.handle_drop_file)
+        registry.register("agent/list_files", orchestrator.handle_list_files)
+        registry.register("agent/read_only", orchestrator.handle_read_only)
+        registry.register("agent/repo_map", orchestrator.handle_repo_map)
+        # Execution
+        registry.register("agent/run", orchestrator.handle_run)
+        registry.register("agent/test", orchestrator.handle_test)
+        registry.register("agent/lint", orchestrator.handle_lint)
+    else:
+        # Register stubs only when no orchestrator is provided
+        agent_methods = [
+            "agent/submit_prompt", "agent/cancel", "agent/status", "agent/list_sessions",
+            "agent/reset", "agent/clear", "agent/add_file", "agent/drop_file",
+            "agent/list_files", "agent/read_only", "agent/repo_map",
+            "agent/run", "agent/test", "agent/lint",
+            "agent/accept_diff", "agent/reject_diff",
+        ]
+        for method in agent_methods:
+            registry.register(method, handle_not_implemented)
+
     return registry
+

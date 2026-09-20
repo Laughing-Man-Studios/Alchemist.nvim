@@ -42,6 +42,10 @@ class AssistantEngine(abc.ABC):
         """Reset the engine state (clear context)."""
         pass
 
+    async def clear(self, session_id: str) -> None:
+        """Clear chat history while preserving context files."""
+        await self.reset(session_id)
+
 
 class StubAssistantEngine(AssistantEngine):
     """Stub implementation for testing and development."""
@@ -56,4 +60,7 @@ class StubAssistantEngine(AssistantEngine):
         return {"state": "idle"}
 
     async def reset(self, session_id: str) -> None:
+        pass
+
+    async def clear(self, session_id: str) -> None:
         pass
