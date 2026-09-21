@@ -18,21 +18,27 @@
 
 Alchemist.nvim is a zero-config, native NeoVim AI assistant plugin that wraps the Aider agent core and LiteLLM SDK inside a single headless Python background daemon. The daemon is managed invisibly through Astral's `uv`, exposes a structured JSON-RPC 2.0 API over local IPC, and coordinates all editor instances through a single system-wide master process.
 
-The plugin's primary product goal is to provide Aider-like code editing workflows directly inside NeoVim while hiding Python setup, daemon lifecycle management, model selection, API key storage, quota tracking, and provider failover behind simple UI flows.
+The plugin's primary product goal is to provide Aider-like code editing workflows directly inside NeoVim while hiding Python setup, daemon lifecycle management, model selection, and API key storage behind simple UI flows.
 
 For V1, Alchemist intentionally prioritizes determinism and simplicity:
 
-- One system-wide daemon
-- One active agent job globally
-- One project active at a time
-- macOS-first, Linux-supported
-- Unix domain sockets only
-- UI-based setup only
-- No manual config file editing
-- Aider parity as the guiding behavior model
-- Hardcoded provider/model routing optimized for free-tier preservation
+* One system-wide daemon
 
-Post-V1 features such as Windows named pipes, OS keychain integration, advanced configuration, concurrent jobs, project-local overrides, and complex multi-provider policy tuning are explicitly deferred.
+* One active agent job globally
+
+* One project active at a time
+
+* macOS-first, Linux-supported
+
+* Unix domain sockets only
+
+* UI-based setup only
+
+* No manual config file editing
+
+* Aider parity as the guiding behavior model
+
+Post-V1 features such as Windows named pipes, OS keychain integration, advanced configuration, concurrent jobs, and project-local overrides are explicitly deferred.
 
 ---
 
@@ -149,7 +155,7 @@ require("alchemist").status()
 The status function should return a short, render-safe string suitable for statusline integrations such as lualine:
 
 ```text
-🤖 Alchemist [DeepSeek-V3 | Key #3]
+🤖 Alchemist [DeepSeek-V3]
 
 ```
 
@@ -161,17 +167,22 @@ The statusline may expose the actual active provider/model because the user expl
 
 ### 2.1 Core Product Goal
 
-Alchemist is designed to make Aider-style AI coding assistance feel native inside NeoVim. The user should not need to understand or manually manage Python virtual environments, daemon processes, LiteLLM routing, JSON-RPC transport, dependency installation, shadow workspaces, or quota ledgers.
+Alchemist is designed to make Aider-style AI coding assistance feel native inside NeoVim. The user should not need to understand or manually manage Python virtual environments, daemon processes, JSON-RPC transport, dependency installation, or shadow workspaces.
 
 ### 2.2 Definition of Zero-Config
 
 For Alchemist, zero-config means:
 
 * No manual editing of config files
+
 * No manual Python environment setup
+
 * No manual daemon installation
+
 * No manual dependency installation
+
 * No required Lua options beyond `require("alchemist").setup()`
+
 * All required setup occurs through interactive NeoVim UI flows
 
 Zero-config does **not** mean that chat works without API keys. Users must add provider API keys through `:AlchemistSetup` before agent features become available.
@@ -181,12 +192,19 @@ Zero-config does **not** mean that chat works without API keys. Users must add p
 On first use:
 
 1. Client initializes.
+
 2. Client checks whether the daemon is reachable.
+
 3. Client checks whether `uv` is available.
+
 4. If `uv` is missing, the user is prompted before download.
+
 5. Client starts or connects to daemon.
+
 6. Daemon reports whether any usable provider keys exist.
+
 7. If no keys exist, Alchemist opens setup flow automatically.
+
 8. Chat/code-editing operations remain disabled until at least one provider key is configured.
 
 ### 2.4 No Offline/Local Fallback in V1
@@ -202,26 +220,41 @@ V1 does not include offline/local LLM mode. If no API keys are added, agent feat
 V1 includes:
 
 * Single system-wide Python daemon
+
 * Multi-client NeoVim connection support
+
 * One active job globally
+
 * One active project at a time
+
 * Unix domain socket IPC on macOS/Linux
+
 * JSON-RPC 2.0 over newline-delimited JSON frames
+
 * `uv`-managed Python runtime and dependencies
+
 * UI-driven setup
+
 * UI-driven API key entry and persistence
-* Basic provider/model routing
-* Multi-key support per provider
-* Free-tier-preserving quota tracking
+
 * Shadow workspace execution
+
 * Prompt submission
+
 * Streaming status/token updates
+
 * Unified diff generation
+
 * Diff approval/rejection
+
 * Basic conflict handling
+
 * Cancellation if supported by the underlying Aider execution path
+
 * Statusline function
-* Local-only telemetry for quota usage
+
+* Local-only telemetry
+
 * Headless tests for daemon and NeoVim UI
 
 ### 3.2 Explicit V1 Non-Goals
@@ -229,19 +262,33 @@ V1 includes:
 The following are deferred:
 
 * Windows named pipe support
+
 * Native Windows Credential Manager / DPAPI support
+
 * Linux Secret Service hardening as primary V1 path
+
 * macOS Keychain as primary V1 path
+
 * Advanced user configuration
+
 * Project-local `.alchemist.*` configuration
+
 * User-defined model profiles
+
 * Multiple concurrent jobs
+
 * Multiple simultaneously mutable project workspaces
+
 * Cross-client job visibility
+
 * Persistent chat sessions
+
 * Hunk-level custom UI beyond what the chosen diff UI supports
+
 * Full marketplace-ready polish
+
 * Enterprise-safe no-download mode
+
 * Remote telemetry/analytics
 
 ---
@@ -252,7 +299,7 @@ The following are deferred:
 
 Alchemist uses a **single system-wide master daemon / multi-client architecture**.
 
-Multiple lightweight NeoVim Lua clients communicate with one stateful Python daemon. The daemon owns provider keys, quota state, shadow workspaces, model routing, and Aider orchestration.
+Multiple lightweight NeoVim Lua clients communicate with one stateful Python daemon. The daemon owns provider keys, shadow workspaces, and Aider orchestration.
 
 ```text
 ┌────────────────────────┐               ┌────────────────────────┐
@@ -269,7 +316,7 @@ Multiple lightweight NeoVim Lua clients communicate with one stateful Python dae
                     │ Single Python Process  │
                     └───────────┬────────────┘
                                 │
-                                │ aiosqlite WAL ledger
+                                │ aiosqlite ledger
                                 ▼
                     ┌────────────────────────┐
                     │ Shared SQLite Ledger   │
@@ -282,6 +329,7 @@ Multiple lightweight NeoVim Lua clients communicate with one stateful Python dae
 V1 transport:
 
 * macOS/Linux: Unix domain sockets
+
 * Windows: deferred
 
 Default socket path resolution:
@@ -311,10 +359,15 @@ V1 uses newline-delimited JSON frames over the socket.
 Rules:
 
 * Each JSON-RPC object is encoded as UTF-8 JSON.
+
 * Each frame is terminated with a single newline byte: `\n`.
+
 * Newlines inside string values must be JSON-escaped.
+
 * The receiver buffers bytes until newline.
+
 * Invalid JSON produces JSON-RPC parse error.
+
 * Oversized frames are rejected with `FRAME_TOO_LARGE`.
 
 Recommended max frame size for V1:
@@ -335,13 +388,21 @@ Large diffs exceeding this size should be rejected with a clear remediation mess
 On NeoVim initialization:
 
 1. Lua client computes socket path.
+
 2. Client attempts to connect.
+
 3. If connection succeeds, client sends `client/initialize`.
+
 4. If connection fails, client attempts to acquire daemon lockfile.
+
 5. If lock acquisition succeeds, client starts daemon via `uv run`.
+
 6. Client waits for socket readiness.
+
 7. Client connects and initializes.
+
 8. If stale socket exists, client removes stale socket after verifying no daemon is listening.
+
 9. User is notified and asked whether to restart daemon.
 
 ### 5.2 Race Prevention
@@ -349,7 +410,9 @@ On NeoVim initialization:
 To prevent two NeoVim instances from spawning two daemons simultaneously, V1 uses:
 
 * Unix socket existence check
+
 * Lockfile acquisition
+
 * Atomic file creation or OS-level file lock
 
 Recommended lock path:
@@ -373,9 +436,13 @@ Only the lock holder may spawn the daemon.
 If the socket path exists but connection fails:
 
 1. Client treats it as potentially stale.
+
 2. Client attempts a short retry window.
+
 3. If still unreachable, client closes/removes stale socket if permitted.
+
 4. Client notifies user.
+
 5. Client asks whether to restart daemon.
 
 ### 5.4 Version Compatibility
@@ -401,7 +468,9 @@ Example `client/initialize` response:
 If the Lua client and daemon protocol versions are incompatible:
 
 * Notify the user.
+
 * Tell the user to update and run the latest setup flow.
+
 * Prevent agent execution until resolved.
 
 ### 5.5 Plugin Update Behavior
@@ -413,7 +482,9 @@ When the plugin updates, the client should detect daemon/script version mismatch
 The daemon tracks active client channels.
 
 * On client disconnect, decrement active client count.
+
 * If active client count reaches zero, start a 15-second grace period.
+
 * If no client reconnects, flush SQLite telemetry, close sockets, remove lockfiles/socket files, and exit cleanly.
 
 ### 5.7 Manual Lifecycle Commands
@@ -444,9 +515,13 @@ All runtime dependencies live inside the plugin repository or are resolved by `u
 V1 should support or document:
 
 * lazy.nvim
+
 * packer.nvim
+
 * vim-plug
+
 * rocks.nvim
+
 * manual installation
 
 Implementation may prioritize lazy.nvim first, but the project should not structurally depend on lazy.nvim-only behavior.
@@ -456,9 +531,13 @@ Implementation may prioritize lazy.nvim first, but the project should not struct
 If `uv` is missing:
 
 1. Client prompts the user.
+
 2. Prompt shows the download source.
+
 3. Prompt shows what binary will be downloaded.
+
 4. User must explicitly approve.
+
 5. If approval is denied, setup stops with remediation.
 
 No silent binary download is allowed in V1.
@@ -468,11 +547,17 @@ No silent binary download is allowed in V1.
 V1 pins:
 
 * `uv` version
+
 * Python version
+
 * Aider version range
+
 * LiteLLM version range
+
 * Pydantic version range
+
 * aiosqlite version range
+
 * cryptography version range
 
 ### 6.5 PEP 723 Script Metadata
@@ -510,28 +595,37 @@ If `uv` dependency cache appears corrupted, Alchemist should use the appropriate
 The daemon owns:
 
 * IPC server
+
 * JSON-RPC request dispatch
+
 * Client registry
+
 * Project registry
+
 * Active job state
+
 * Aider execution orchestration
+
 * Shadow workspace management
-* LiteLLM routing/interception
+
 * Provider key storage
-* Quota accounting
+
 * SQLite persistence
+
 * Error normalization
+
 * Credential redaction
-* Status broadcasting
 
 ### 7.2 Process Model
 
 V1 uses a single Python process with:
 
 * Main asyncio event loop
+
 * Async Unix socket server
+
 * Thread-isolated Aider execution bridge
-* In-memory quota router
+
 * Async SQLite persistence worker
 
 ### 7.3 Async IPC Server
@@ -555,9 +649,13 @@ The daemon must not block the main event loop during Aider execution or long-run
 Alchemist treats Aider as a hybrid dependency:
 
 * Use library internals where practical.
+
 * Use subprocess fallback where library boundaries are unstable or blocking.
+
 * Hide Aider behind a generic assistant engine API.
+
 * Preserve all Aider repository map behavior inside the shadow workspace.
+
 * Pin Aider tightly for V1.
 
 ### 7.5 Generic Assistant Engine Interface
@@ -582,10 +680,15 @@ Aider is the only V1 engine implementation.
 The daemon overrides Aider's IO boundary to capture:
 
 * Streaming output
+
 * Status updates
+
 * Confirmation prompts
+
 * Selection prompts
+
 * Text-entry prompts
+
 * Diff lifecycle events
 
 Raw terminal output is not parsed as protocol.
@@ -595,12 +698,8 @@ Raw terminal output is not parsed as protocol.
 The daemon intercepts LiteLLM completion calls to:
 
 * Inject provider keys
-* Select model/provider
-* Track token usage
-* Rotate keys
-* Enforce cooldowns
+
 * Redact credentials from logs/errors
-* Broadcast status changes
 
 ---
 
@@ -611,16 +710,27 @@ The daemon intercepts LiteLLM completion calls to:
 The Lua client owns:
 
 * User commands
+
 * UI panels
+
 * Statusline function
+
 * Socket connection
+
 * JSON-RPC framing
+
 * Request/response correlation
+
 * Diff review UI
+
 * Buffer snapshotting
+
 * Patch application to live buffers
+
 * User notifications
+
 * Setup flow
+
 * Daemon bootstrap orchestration
 
 ### 8.2 State Store
@@ -648,8 +758,11 @@ The client maintains an in-memory state table including:
 V1 may use:
 
 * native floating windows
+
 * nui.nvim if present or bundled as dependency
+
 * split buffers for diff review
+
 * NeoVim native diff mode
 
 Diff UI should prefer native NeoVim behavior unless a lightweight plugin dependency is selected.
@@ -669,8 +782,7 @@ Potential states:
 🤖 Alchemist [offline]
 🤖 Alchemist [setup required]
 🤖 Alchemist [idle]
-🤖 Alchemist [DeepSeek-V3 | Key #2]
-🤖 Alchemist [rate limited]
+🤖 Alchemist [DeepSeek-V3]
 🤖 Alchemist [error]
 
 ```
@@ -734,9 +846,7 @@ ui/diff_ready
 ui/clear_prompt
 agent/stream_delta
 server/request_confirmation
-daemon/key_swapped
 daemon/error
-daemon/exhausted
 
 ```
 
@@ -798,8 +908,6 @@ daemon/exhausted
     "status": "processing_stream",
     "model": "deepseek-v3",
     "provider": "deepseek",
-    "key_index": 2,
-    "tokens_per_second": 48.5,
     "phase": "file_modification"
   }
 }
@@ -842,24 +950,7 @@ daemon/exhausted
 
 ```
 
-### 9.8 Key Swap Broadcast
-
-```json
-{
-  "jsonrpc": "2.0",
-  "method": "daemon/key_swapped",
-  "params": {
-    "provider": "deepseek",
-    "model": "deepseek-v3",
-    "current_key_index": 4,
-    "cooldown_target": 3,
-    "reason": "HTTP 429 Rate Limit Enforced"
-  }
-}
-
-```
-
-### 9.9 Server-Initiated Confirmation Request
+### 9.8 Server-Initiated Confirmation Request
 
 ```json
 {
@@ -879,7 +970,7 @@ daemon/exhausted
 
 ```
 
-### 9.10 Client Response to Server-Initiated Request
+### 9.9 Client Response to Server-Initiated Request
 
 ```json
 {
@@ -893,7 +984,7 @@ daemon/exhausted
 
 ```
 
-### 9.11 Error Envelope
+### 9.10 Error Envelope
 
 Use standard JSON-RPC error format with structured data.
 
@@ -916,14 +1007,12 @@ Use standard JSON-RPC error format with structured data.
 
 ```
 
-### 9.12 Error Codes
+### 9.11 Error Codes
 
 Normalized V1 user-facing errors:
 
 ```text
 NO_KEYS_CONFIGURED
-PROVIDER_RATE_LIMITED
-ALL_KEYS_EXHAUSTED
 PATCH_APPLY_FAILED
 AIDER_INTERNAL_ERROR
 UV_BOOTSTRAP_FAILED
@@ -940,44 +1029,17 @@ Every user-facing error should include a remediation hint.
 
 ---
 
-## 10. Provider, Model, and Routing Policy
+## 10. Provider and Model Setup
 
 ### 10.1 Setup and Discovery
 
 V1 provider keys are discovered through the setup panel. The user enters keys through `:AlchemistSetup`; the daemon persists them.
 
-Supported providers and initial routing defaults are hardcoded for V1.
-
 ### 10.2 No Default Provider
 
 Alchemist ships with no usable default provider. Agent features are disabled until keys are configured.
 
-### 10.3 Routing Priorities
-
-Routing policy priority:
-
-1. Preserve free-tier quota.
-2. Choose best-fit model for the prompt/task.
-3. Prefer operational availability.
-4. Fall back silently when the preferred model/provider is unavailable.
-
-Silent fallback should still update statusline/status panels so users can see the active provider/model.
-
-### 10.4 Task Routing Matrix
-
-Initial hardcoded policy:
-
-| Task Phase | Primary Choice | Secondary Fallback | Context / Pruning Logic |
-| --- | --- | --- | --- |
-| Repository indexing / mapping | Gemini Flash-class model | OpenRouter large free model | Favors long context and broad repo map generation |
-| Code modification / diff creation | DeepSeek-V3-class model | Qwen Coder-class model | Uses target file segments and repo map context |
-| Exploratory architecture chat | Qwen 72B-class model | Gemini Flash-class model | Generic reasoning with lower mutation risk |
-| Ask/read-only question | Lowest-cost viable model | Long-context fallback | Avoids file mutation path |
-| Test/lint repair | Code-focused model | General coding fallback | Includes failing output where available |
-
-Exact provider names and model IDs should be centralized in daemon constants for V1.
-
-### 10.5 User Configurability
+### 10.3 User Configurability
 
 V1 does not support custom model profiles. No `models = {}` setup config is exposed.
 
@@ -996,108 +1058,25 @@ require("alchemist").setup({
 
 ---
 
-## 11. Quota Tracking and Key Rotation
+## 11. Credential Storage and Security
 
-### 11.1 Source of Truth
-
-The master daemon maintains quota state in memory as the high-frequency source of truth.
-
-SQLite is used for persistence, restart recovery, and historical quota tracking.
-
-### 11.2 Initialization
-
-Quota limits are initialized in this order:
-
-1. Provider response headers, if available.
-2. Provider-specific known heuristics.
-3. Generic RPM/TPM fallback assumptions.
-
-### 11.3 Tracked Metrics
-
-Track provider-specific metrics where possible:
-
-* Requests per minute
-* Tokens per minute
-* Requests per day
-* Tokens per day
-* Provider reset windows
-* Cooldown deadlines
-* Key availability state
-
-Fallback metric:
-
-* RPM only, if no token data is available
-
-### 11.4 Rotation Strategy
-
-Alchemist should proactively rotate keys shortly before exhaustion when quota state indicates a key is near its limit.
-
-Reactive rotation also occurs on:
-
-* HTTP 429
-* Retryable provider quota error
-* Provider-specific quota exhaustion response
-
-### 11.5 Cooldown Strategy
-
-Cooldown source priority:
-
-1. `Retry-After` or equivalent provider response header.
-2. Provider-specific hardcoded timeout.
-3. Generic exponential backoff fallback.
-
-### 11.6 Exhaustion Behavior
-
-If all configured keys/providers are exhausted:
-
-1. Stop the active operation if no safe fallback exists.
-2. Notify user with `ALL_KEYS_EXHAUSTED`.
-3. Offer options:
-* Add another key.
-* Wait until quotas reset.
-
-
-
-### 11.7 Persistence
-
-The SQLite quota ledger must survive daemon restarts to prevent accidental quota overuse after reboot.
-
-### 11.8 SQLite WAL Configuration
-
-The SQLite database should be initialized with:
-
-```python
-await db.execute("PRAGMA journal_mode = WAL;")
-await db.execute("PRAGMA synchronous = NORMAL;")
-await db.execute("PRAGMA busy_timeout = 5000;")
-
-```
-
-### 11.9 Deferred Commit Policy
-
-Runtime metrics are batched in memory and asynchronously flushed:
-
-* Every 2 seconds, or
-* At completion of an LLM block, or
-* During daemon shutdown
-
----
-
-## 12. Credential Storage and Security
-
-### 12.1 V1 Credential Policy
+### 11.1 V1 Credential Policy
 
 V1 key flow:
 
 1. User enters key in `:AlchemistSetup`.
+
 2. Lua sends the key to daemon over protected local IPC.
+
 3. Daemon persists the key.
+
 4. Lua does not retain key after setup response.
+
 5. Keys are never retransmitted from Lua after initial setup.
 
 Users are not allowed to use environment variables as the only supported key source in V1.
 
-### 12.2 V1 Persistence Mechanism
+### 11.2 V1 Persistence Mechanism
 
 Because key persistence is required and OS keyring integration is deferred, V1 uses an encrypted local vault.
 
@@ -1110,30 +1089,37 @@ Recommended path:
 
 The local vault is acceptable for V1 under the defined threat model.
 
-### 12.3 Deferred Credential Backends
+### 11.3 Deferred Credential Backends
 
 Post-V1:
 
 * macOS Keychain
+
 * Windows Credential Manager / DPAPI
+
 * Linux Secret Service
+
 * enterprise controls
 
-### 12.4 Threat Model
+### 11.4 Threat Model
 
 Alchemist protects against:
 
 * Accidental key leakage through logs/UI/errors
+
 * Other local users reading credentials
+
 * Casual filesystem inspection
 
 Alchemist does **not** protect against:
 
 * Malware running as the same user
+
 * A compromised user account
+
 * A malicious NeoVim plugin running in the same process
 
-### 12.5 Machine-Bound Local Vault
+### 11.5 Machine-Bound Local Vault
 
 For V1, the encrypted local vault derives a machine-bound key from stable OS identifiers.
 
@@ -1165,7 +1151,7 @@ K_crypt = HKDF-Expand(
 
 ```
 
-### 12.6 Vault Layout
+### 11.6 Vault Layout
 
 Encrypted payload:
 
@@ -1176,7 +1162,7 @@ Encrypted payload:
 
 ```
 
-### 12.7 File Permissions
+### 11.7 File Permissions
 
 Unix/macOS vault files must be created with owner read/write only:
 
@@ -1188,16 +1174,19 @@ with os.fdopen(fd, "wb") as vault_file:
 
 ```
 
-### 12.8 IPC Security
+### 11.8 IPC Security
 
 The daemon must enforce:
 
 * Unix socket mode `0600`
+
 * Same-user validation for connecting clients
+
 * Local-only socket path
+
 * No remote TCP listener in V1
 
-### 12.9 Secret Handling in Python
+### 11.9 Secret Handling in Python
 
 Credential-bearing models must use Pydantic secret types where practical.
 
@@ -1210,60 +1199,69 @@ class ProviderKey(BaseModel):
 
 ```
 
-### 12.10 Logging and Redaction
+### 11.10 Logging and Redaction
 
 Logs are disabled by default. When logs are enabled for debugging, credentials must be redacted.
 
 The daemon must sanitize:
 
 * Python logs
+
 * LiteLLM callbacks
+
 * JSON-RPC diagnostic payloads
+
 * SQLite error ledger entries
+
 * tracebacks shown to clients
 
-### 12.11 No Credential Export/Delete Commands in Public V1 UI
+### 11.11 No Credential Export/Delete Commands in Public V1 UI
 
 V1 does not expose credential export/delete as user-facing commands. Internal test/helper methods may exist but must not be documented as user workflows.
 
 ---
 
-## 13. Privacy, Telemetry, and Local Ledger
+## 12. Privacy, Telemetry, and Local Ledger
 
-### 13.1 Privacy Policy
+### 12.1 Privacy Policy
 
 All telemetry is local-only.
 
 Alchemist will not send usage analytics to an external service in V1.
 
-### 13.2 Persisted Telemetry
+### 12.2 Persisted Telemetry
 
 SQLite may persist:
 
-* Token counts
 * Provider names
+
 * Model names
+
 * Request timestamps
-* Quota state
-* Cooldown state
+
 * Normalized error codes
 
-### 13.3 Explicitly Not Persisted
+### 12.3 Explicitly Not Persisted
 
 The daemon must not persist:
 
 * Raw prompts
+
 * Code snippets
+
 * Full file contents
+
 * API keys in plaintext
+
 * Authorization headers
+
 * Raw provider request payloads
 
-### 13.4 Retention
+### 12.4 Retention
 
-Quota/telemetry metrics are retained indefinitely in V1.
+Telemetry metrics are retained indefinitely in V1.
 
-### 13.5 Logs vs Log Panel
+### 12.5 Logs vs Log Panel
 
 Disk logs are disabled by default.
 
@@ -1271,13 +1269,13 @@ The in-editor log panel may persist normalized operational errors and remediatio
 
 ---
 
-## 14. Shadow Workspace Engine
+## 13. Shadow Workspace Engine
 
-### 14.1 Purpose
+### 13.1 Purpose
 
 Aider operates primarily against filesystem-backed files and Git repositories. NeoVim users often have unsaved in-memory buffers. The shadow workspace engine reconciles these models by executing Aider in an isolated copy of the project and returning diffs to the live editor.
 
-### 14.2 Location
+### 13.2 Location
 
 V1 shadow workspace root:
 
@@ -1286,53 +1284,61 @@ V1 shadow workspace root:
 
 ```
 
-### 14.3 Project Partitioning
+### 13.3 Project Partitioning
 
 Each project root maps to one shadow workspace. Because V1 supports only one active project/job at a time, no concurrent worktree branching is required.
 
 Post-V1 may use per-operation worktrees or branches.
 
-### 14.4 Materialization Strategy
+### 13.4 Materialization Strategy
 
 V1 uses a full filesystem copy of the project into the shadow workspace.
 
 Large repositories are handled the same as small repositories in V1. Performance optimizations are deferred.
 
-### 14.5 Ignore Rules
+### 13.5 Ignore Rules
 
 Alchemist follows Aider behavior for:
 
 * `.gitignore`
+
 * `.aiderignore`
+
 * binary file exclusion
+
 * repo map inclusion
+
 * file selection behavior
 
 If Aider exposes a reliable helper for ignore processing, Alchemist should reuse it.
 
-### 14.6 Unsaved Buffers
+### 13.6 Unsaved Buffers
 
 Before execution, the Lua client sends all relevant in-memory buffers to the daemon. The daemon writes those contents into the shadow workspace before invoking Aider.
 
 Unsaved file handling should mirror `aider.nvim` behavior as closely as practical.
 
-### 14.7 Pre-Flight Sync
+### 13.7 Pre-Flight Sync
 
 Before `agent/submit_prompt`, the client captures:
 
 * Active file list
+
 * Relevant buffer contents
+
 * Buffer file paths
+
 * SHA-256 content hashes
+
 * Modified state
 
 The daemon writes the provided buffer contents into the shadow workspace.
 
-### 14.8 Shallow Git Sandbox
+### 13.8 Shallow Git Sandbox
 
 The shadow workspace maintains its own Git repository. This allows Aider to use Git history, repo map mechanics, and diff generation without mutating the user's real repository history.
 
-### 14.9 Execution Flow
+### 13.9 Execution Flow
 
 ```text
 NeoVim live buffers
@@ -1354,7 +1360,7 @@ NeoVim diff approval UI
 
 ```
 
-### 14.10 Diff Generation
+### 13.10 Diff Generation
 
 After Aider completes, the daemon calculates a unified diff from the shadow repository.
 
@@ -1367,13 +1373,16 @@ git diff HEAD~1
 
 If Aider exposes a better native diff API, use Aider behavior.
 
-### 14.11 Rejection Flow
+### 13.11 Rejection Flow
 
 On rejection:
 
 1. Client closes diff UI.
+
 2. Daemon rewinds the shadow workspace.
+
 3. Prefer Aider-native undo/reset behavior.
+
 4. Fallback:
 
 ```shell
@@ -1381,17 +1390,21 @@ git reset --hard HEAD~1
 
 ```
 
-### 14.12 Acceptance Flow
+### 13.12 Acceptance Flow
 
 On acceptance:
 
 1. Client verifies optimistic hashes.
+
 2. Client applies patch to live buffers.
+
 3. Client writes buffers to disk.
+
 4. Client notifies daemon.
+
 5. Daemon updates shadow baseline.
 
-### 14.13 Cleanup
+### 13.13 Cleanup
 
 V1 cleans shadow workspaces on daemon exit.
 
@@ -1399,72 +1412,83 @@ Post-V1 may preserve shadow workspaces for debugging.
 
 ---
 
-## 15. Diff Review, Patch Application, and Conflict Handling
+## 14. Diff Review, Patch Application, and Conflict Handling
 
-### 15.1 Diff Review UI
+### 14.1 Diff Review UI
 
 Diffs are rendered in either:
 
 * Native NeoVim diff mode
+
 * Lightweight plugin-based diff UI
+
 * Scratch buffer fallback
 
-### 15.2 Multi-File Diffs
+### 14.2 Multi-File Diffs
 
 V1 supports multi-file diff review to the extent supported by the chosen diff UI and patch application path.
 
-### 15.3 Hunk-Level Application
+### 14.3 Hunk-Level Application
 
 Hunk-level application is not a custom V1 requirement. If the native diff plugin/viewer supports it, Alchemist may expose it. Otherwise full-diff apply is acceptable for V1.
 
-### 15.4 File Operations
+### 14.4 File Operations
 
 File creation, rename, deletion, and mode changes should follow Aider behavior. If Aider does not handle a case cleanly, fallback to `git apply` semantics where possible.
 
-### 15.5 Optimistic Locking
+### 14.5 Optimistic Locking
 
 Before pre-flight sync, the client records SHA-256 hashes for affected buffers.
 
 Before applying returned diff:
 
 1. Recompute hashes.
+
 2. Compare against `base_hashes` in diff payload.
+
 3. If hashes match, proceed.
+
 4. If hashes differ, open native diff/conflict resolution mode or notify user.
 
-### 15.6 Transactional Apply
+### 14.6 Transactional Apply
 
 Patch application must be transactional at the client layer.
 
 Before applying:
 
 * Snapshot all affected live buffers.
+
 * Record cursor/window state where practical.
 
 If any file fails to apply:
 
 1. Restore all modified buffers from snapshots.
+
 2. Do not write partial changes to disk.
+
 3. Emit `PATCH_APPLY_FAILED`.
+
 4. Show remediation hint.
 
-### 15.7 Patch Application Priority
+### 14.7 Patch Application Priority
 
 Patch application priority:
 
 1. Aider-native mechanism, if available and safe.
+
 2. `git apply` against a temporary index/worktree.
+
 3. Lua-side buffer patching as fallback.
 
 ---
 
-## 16. Interactive Upstream Prompting Protocol
+## 15. Interactive Upstream Prompting Protocol
 
-### 16.1 Problem
+### 15.1 Problem
 
 Aider may issue blocking prompts such as confirmation, text input, or selection. The daemon must not allow those synchronous prompts to block the main asyncio IPC loop.
 
-### 16.2 Thread-Isolated Bridge
+### 15.2 Thread-Isolated Bridge
 
 Aider execution runs in a worker thread. Prompt requests are bridged to the main event loop using thread-safe futures.
 
@@ -1492,13 +1516,13 @@ class DaemonInputOutput:
 
 ```
 
-### 16.3 Routing Rule
+### 15.3 Routing Rule
 
 Server-initiated prompts always route to the NeoVim client that started the operation.
 
 Other connected clients cannot answer prompts for that operation in V1.
 
-### 16.4 Prompt Types
+### 15.4 Prompt Types
 
 Supported prompt types:
 
@@ -1509,53 +1533,59 @@ selection
 
 ```
 
-### 16.5 Timeout Behavior
+### 15.5 Timeout Behavior
 
 V1 uses a fixed 60-second timeout. It is not configurable in V1.
 
 Timeout defaults are conservative:
 
 * Reject structural mutations.
+
 * Allow safe read-only operations where possible.
+
 * Cancel operation if no safe default exists.
 
-### 16.6 Client Disconnect
+### 15.6 Client Disconnect
 
 If the initiating NeoVim client closes while Aider is waiting:
 
 * The prompt is dropped.
+
 * The operation resolves with conservative fallback.
+
 * The daemon must not hang.
 
-### 16.7 Blocking Scope
+### 15.7 Blocking Scope
 
 Interactive prompts block only the current session/job, not the entire daemon.
 
 Because V1 only has one active job globally, this distinction primarily protects daemon health and UI responsiveness.
 
-### 16.8 Response Caching
+### 15.8 Response Caching
 
 Prompt responses may be cached for the duration of a single operation to avoid repeatedly asking the same question.
 
 ---
 
-## 17. Concurrency and Session Model
+## 16. Concurrency and Session Model
 
-### 17.1 V1 Global Serialization
+### 16.1 V1 Global Serialization
 
 V1 permits only one active agent job globally.
 
 If another client attempts to start a job while one is active:
 
 * Return `AGENT_BUSY` or equivalent normalized error.
+
 * Include the current job summary.
+
 * Suggest waiting or cancelling the active job if it belongs to the current client.
 
-### 17.2 Sessions
+### 16.2 Sessions
 
 Sessions exist as in-memory identifiers for protocol correlation but are not persisted across daemon restarts in V1.
 
-### 17.3 Running Job Visibility
+### 16.3 Running Job Visibility
 
 Users can view the current active job through:
 
@@ -1566,22 +1596,25 @@ Users can view the current active job through:
 
 A client should not see full details of jobs started by another client in V1. It may see only a generic busy state.
 
-### 17.4 Cancellation
+### 16.4 Cancellation
 
 `agent/cancel` and `:AlchemistCancel` are supported if the underlying Aider execution path can be interrupted safely.
 
 If true cancellation is unavailable, Alchemist should:
 
 * Mark cancellation requested.
+
 * Stop streaming updates.
+
 * Prevent applying pending diffs.
+
 * Let backend execution wind down safely.
 
 ---
 
-## 18. Error Handling and Recovery
+## 17. Error Handling and Recovery
 
-### 18.1 User-Facing Errors
+### 17.1 User-Facing Errors
 
 Alchemist normalizes operational errors that affect user workflows.
 
@@ -1589,8 +1622,6 @@ Required V1 errors:
 
 ```text
 NO_KEYS_CONFIGURED
-PROVIDER_RATE_LIMITED
-ALL_KEYS_EXHAUSTED
 PATCH_APPLY_FAILED
 AIDER_INTERNAL_ERROR
 UV_BOOTSTRAP_FAILED
@@ -1604,7 +1635,7 @@ AGENT_BUSY
 
 ```
 
-### 18.2 Remediation Hints
+### 17.2 Remediation Hints
 
 Every error shown to the user must include a suggested next action.
 
@@ -1612,41 +1643,44 @@ Examples:
 
 ```text
 NO_KEYS_CONFIGURED: Run :AlchemistSetup and add an API key.
-ALL_KEYS_EXHAUSTED: Add another key or wait for provider quota reset.
 PATCH_APPLY_FAILED: Buffers were restored. Reopen the diff or retry.
 DAEMON_VERSION_MISMATCH: Update the plugin and rerun setup.
 
 ```
 
-### 18.3 UI Presentation
+### 17.3 UI Presentation
 
 Errors are surfaced via:
 
 * NeoVim notification
+
 * In-editor Alchemist log panel
 
 Disk logs remain disabled by default.
 
-### 18.4 Failed Operations
+### 17.4 Failed Operations
 
 Failed operation behavior should mimic Aider where possible.
 
-### 18.5 Daemon Crash Recovery
+### 17.5 Daemon Crash Recovery
 
 If daemon crashes:
 
 1. Client detects IPC disconnect.
+
 2. Client attempts auto-restart.
+
 3. Client reinitializes.
+
 4. Pending operations follow Aider-like failure behavior.
 
 V1 does not guarantee replay of in-flight requests after crash.
 
 ---
 
-## 19. Platform Support
+## 18. Platform Support
 
-### 19.1 V1 Platforms
+### 18.1 V1 Platforms
 
 Primary:
 
@@ -1662,47 +1696,56 @@ Linux
 
 ```
 
-### 19.2 Deferred Windows Support
+### 18.2 Deferred Windows Support
 
 Windows support is post-V1 and should eventually include:
 
 * Native Windows NeoVim
+
 * WSL NeoVim
+
 * Possible WSL-to-Windows daemon interop
+
 * Windows Terminal workflows
+
 * Named pipes
+
 * Windows paths with spaces
+
 * Path normalization via a library
+
 * Windows ACL hardening
+
 * DPAPI credential protection
 
-### 19.3 Path Normalization
+### 18.3 Path Normalization
 
 V1 should still centralize path normalization behind a utility layer so Windows support can be added later without rewriting protocol contracts.
 
 ---
 
-## 20. Configuration Model
+## 19. Configuration Model
 
-### 20.1 Minimal Required Config
+### 19.1 Minimal Required Config
 
 ```lua
 require("alchemist").setup()
 
 ```
 
-### 20.2 No Advanced Config in V1
+### 19.2 No Advanced Config in V1
 
 V1 does not expose advanced setup options such as:
 
-* custom provider policy
-* custom model routing
 * shadow workspace location
+
 * UI provider selection
+
 * local vault toggles
+
 * auto-download policy overrides
 
-### 20.3 No Project-Local Config in V1
+### 19.3 No Project-Local Config in V1
 
 V1 does not support:
 
@@ -1716,9 +1759,9 @@ Therefore, no project trust prompt is required in V1.
 
 ---
 
-## 21. Testing and Verification Strategy
+## 20. Testing and Verification Strategy
 
-### 21.1 Test Frameworks
+### 20.1 Test Frameworks
 
 Python:
 
@@ -1736,65 +1779,71 @@ headless nvim tests
 
 ```
 
-### 21.2 Fake Provider
+### 20.2 Fake Provider
 
 A fake LiteLLM-compatible provider is required for deterministic tests.
 
 It should simulate:
 
 * successful completions
+
 * streaming chunks
-* token usage headers
-* rate limits
-* retry-after headers
+
 * provider errors
+
 * context-limit errors
 
-### 21.3 Rate Limit Tests
-
-Tests must cover:
-
-* HTTP 429 handling
-* retry-after cooldown
-* key rotation
-* all-keys-exhausted behavior
-* SQLite persistence across daemon restart
-
-### 21.4 Shadow Workspace Tests
+### 20.3 Shadow Workspace Tests
 
 Use real temporary Git repositories to verify:
 
 * project copy
+
 * pre-flight sync
+
 * unsaved buffer materialization
+
 * Aider/dummy mutation
+
 * diff generation
+
 * acceptance baseline update
+
 * rejection reset
+
 * cleanup on daemon exit
 
-### 21.5 UI Tests
+### 20.4 UI Tests
 
 Headless NeoVim tests should verify:
 
 * setup panel opens
+
 * missing keys block chat
+
 * statusline function returns valid string
+
 * diff panel opens
+
 * apply/reject keymaps dispatch expected RPC calls
+
 * server prompt UI resolves boolean/text/selection requests
 
-### 21.6 Security Tests
+### 20.5 Security Tests
 
 Tests must verify:
 
 * API keys are not written to logs
+
 * API keys are not included in JSON-RPC diagnostic errors
+
 * API keys are masked in model dumps
+
 * vault file permissions are restrictive
+
 * socket permissions are restrictive
 
-### 21.7 CI Matrix
+### 20.6 CI Matrix
 
 V1 CI:
 
@@ -1806,36 +1855,48 @@ Linux
 
 Windows CI is deferred.
 
-### 21.8 Acceptance Standard
+### 20.7 Acceptance Standard
 
 The V1 acceptance standard is functional Aider parity for the selected V1 command subset, with deterministic daemon/client behavior and no credential leakage.
 
 ---
 
-## 22. Roadmap Integration Status
+## 21. Roadmap Integration Status
 
 The following phases from the Alchemist.nvim Product Roadmap have been fully integrated into this working specification:
 
 * **Phase 1: JSON-RPC Contract**
+
 * **Phase 2: Python Daemon**
+
 * **Phase 3: Shadow Workspace**
+
 * **Phase 4: NeoVim Lua Client**
 
 *(Phases 5 and beyond are actively being developed or are deferred for future versions.)*
 
 ---
 
-## 23. Final Architectural Principles
+## 22. Final Architectural Principles
 
 Alchemist V1 is governed by these principles:
 
 1. **Aider parity first.** When uncertain, mimic Aider behavior.
+
 2. **No manual file editing for setup.** All setup occurs through UI.
+
 3. **Protocol before polish.** Stabilize JSON-RPC before UI expansion.
+
 4. **One job at a time.** Avoid concurrency complexity in V1.
+
 5. **Local-first privacy.** No remote analytics or prompt persistence.
+
 6. **Credential hygiene by default.** Never leak keys into logs, errors, telemetry, or UI.
+
 7. **Shadow before mutation.** Never let the agent directly mutate live buffers without approval.
+
 8. **Simple config.** `require("alchemist").setup()` should be enough.
+
 9. **macOS-first V1.** Build and validate the primary workflow before platform expansion.
+
 10. **Future-proof boundaries.** Hide Aider behind an engine interface and path/platform utilities.

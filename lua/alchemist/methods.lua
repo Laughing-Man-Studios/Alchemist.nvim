@@ -136,6 +136,18 @@ function M.clear(callback)
   end)
 end
 
+function M.list_sessions(callback)
+  local conn = rpc.connection()
+  conn:request("agent/list_sessions", {
+    client_id = state.client_id(),
+  }, function(result)
+    if callback then callback(nil, result) end
+  end, function(err)
+    if callback then callback(err, nil) end
+  end)
+end
+
+
 -- === File/Context Methods ===
 
 function M.add_file(path, callback)
